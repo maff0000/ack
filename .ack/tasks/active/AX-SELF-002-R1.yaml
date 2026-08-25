@@ -4,7 +4,7 @@ type: write
 role: builder
 model: trinity-core
 project_root: /srv/codex/ACK
-base_commit: f7b0204b832366956186f703cf5c77d858235c21
+base_commit: f7b02041b56b77aa3708ea9cf97141b87d9cf456
 worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002-R1
 skills: []
 objective: Append exactly two plain-text documentation sentences to README.md, once each, then verify them with rg and return the complete structured result.

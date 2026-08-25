@@ -7,6 +7,7 @@ import shutil
 from typing import Any
 
 import redis
+import yaml
 
 from .config import Config
 from .contracts import load_yaml, validate_result, validate_task
@@ -117,8 +118,32 @@ class Runner:
             output = "".join(output_parts)
             if len(output) > 1_000_000: raise AckError("local agent result exceeded 1 MB")
             if task["type"] == "write":
+                raw = output.strip()
+                if raw.startswith("```") and raw.endswith("```"):
+                    raw = "\n".join(raw.splitlines()[1:-1])
+                try: pending_result = yaml.safe_load(raw)
+                except yaml.YAMLError as exc: raise AckError("worker did not return structured YAML/JSON") from exc
+                if not isinstance(pending_result, dict) or pending_result.get("status") != "completed":
+                    raise AckError("write worker left changes without a completed result")
+                status_raw = subprocess.run(["git", "-C", str(working_dir), "status", "--porcelain=v1", "-z"], check=True, capture_output=True).stdout
+                dirty_paths: list[str] = []
+                for entry in status_raw.decode("utf-8").split("\0"):
+                    if not entry: continue
+                    if entry[:1] in {"R", "C"} or entry[1:2] in {"R", "C"}:
+                        raise AckError("worker rename/copy changes require Axiom review")
+                    dirty_paths.append(entry[3:])
+                allowed = [Path(value).as_posix().rstrip("/") for value in task["scope"]]
+                for changed_path in dirty_paths:
+                    if not any(changed_path == item or changed_path.startswith(item + "/") for item in allowed):
+                        raise AckError(f"worker changed path outside task scope: {changed_path}")
+                if dirty_paths:
+                    subprocess.run(["git", "-C", str(working_dir), "add", "--", *dirty_paths], check=True)
+                    subprocess.run(["git", "-C", str(working_dir), "-c", "user.name=ACK Worker", "-c", "user.email=ack-worker@localhost", "commit", "-m", f"{task['id']}: worker output"], check=True)
+                pending_result["commit"] = subprocess.run(["git", "-C", str(working_dir), "rev-parse", "HEAD"], check=True, text=True, capture_output=True).stdout.strip()
+                pending_result["changed"] = dirty_paths
+                output = yaml.safe_dump(pending_result, sort_keys=False)
                 dirty = subprocess.run(["git", "-C", str(working_dir), "status", "--porcelain"], check=True, text=True, capture_output=True).stdout.strip()
-                if dirty: raise AckError("worker left uncommitted or untracked repository changes")
+                if dirty: raise AckError("worker controller could not produce a clean commit")
             result_file.parent.mkdir(parents=True, exist_ok=True)
             safe_result = resolve_inside(working_dir, f".ack/results/{task['id']}.yaml")
             fd = os.open(safe_result, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)

@@ -1,7 +1,7 @@
 id: AX-BOOT-005
 agent_instance: AXIOM-BOOTSTRAP
 status: completed
-summary: Live proof confirmed Codex native workspace-write protects .git; ACK now relies on its authoritative bubblewrap boundary and Codex's explicit externally-sandboxed execution mode.
+summary: Live proof confirmed managed Codex protects .git; ACK now validates dirty paths against task scope and creates the attributable worker commit inside the isolated clone.
 changed: [.ack/lib/ack/runner.py, .ack/tasks/active/AX-SELF-002.yaml]
 commit: ""
 tests:
@@ -9,7 +9,7 @@ tests:
   passed: 38
   failed: 0
 findings: []
-risks: [The client bypasses its inner sandbox only inside the already-confined bubblewrap view; canonical host paths remain read-only.]
+risks: [The controller, not model inference, writes private-clone Git metadata after scope validation; canonical Git remains read-only.]
 blockers: []
 evidence: []
 started_at_utc: 2026-08-25T09:47:00Z

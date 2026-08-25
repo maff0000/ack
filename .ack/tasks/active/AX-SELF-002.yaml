@@ -12,8 +12,8 @@ skills: []
 objective: Add a concise README explanation of structured worker result enforcement and ACK's task-derived outer sandbox modes.
 
 # Execute with repository tools before returning a result. Modify README.md only; do not inspect other files.
-# Your first action must be one shell call that appends the two concise sentences below, runs the tests,
-# stages README.md, and commits it. Then run `git rev-parse HEAD` and return every required result field.
+# Your first action must be one shell call that appends the two concise sentences below and runs the tests.
+# ACK's controller creates the attributable isolated-branch commit because managed Codex protects Git metadata.
 # Sentence 1: Worker output follows `.ack/templates/result.schema.json`; its structured JSON is YAML-compatible and ACK validates it again.
 # Sentence 2: ACK's outer bubblewrap boundary is read-only for read tasks and exposes only the isolated clone as writable for write tasks; Codex's explicit external-sandbox mode does not expand that view.
 
@@ -30,8 +30,7 @@ acceptance:
   - "README explains that bubblewrap makes read tasks read-only and exposes only the isolated clone as writable for write tasks, while Codex runs in its explicit external-sandbox mode."
   - Documentation remains concise.
   - "`python3 -m unittest discover -q` passes."
-  - "Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit."
-  - "Use Git commands in the isolated worker repository: stage README.md, create a real commit, and report the exact output of `git rev-parse HEAD`; never invent a commit ID."
+  - "ACK's controller creates the worker-attributable commit on `ack/AX-SELF-002/worker` after validating changed paths against scope."
 
 dependencies:
   - AX-SELF-001

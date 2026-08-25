@@ -31,9 +31,8 @@ agent_command:
   - "{project_root}"
   - -m
   - "{model}"
-  # Codex runs inside ACK's already-constructed bubblewrap boundary. The outer
-  # boundary supplies read-only or isolated-write authority and remains decisive.
-  - --dangerously-bypass-approvals-and-sandbox
+  - --sandbox
+  - "{sandbox_mode}"
   - --output-schema
   - "{result_schema}"
   - "Read the supplied context, perform only the assigned task, report meaningful progress with ack-agent, and return only the required YAML result."

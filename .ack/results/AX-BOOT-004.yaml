@@ -1,0 +1,27 @@
+id: AX-BOOT-004
+agent_instance: AXIOM-BOOTSTRAP
+status: completed
+summary: Axiom directly added Codex structured-output enforcement after repeated local-model formatting contract failures.
+changed:
+  - .ack/templates/result.schema.json
+  - .ack/lib/ack/config.py
+  - .ack/lib/ack/runner.py
+  - .ack/config.example.yaml
+  - .ack/tasks/archive/AX-BOOT-004.yaml
+  - .ack/evidence/AX-SELF-001-S05-rejected.yaml
+commit: a699b3f3ef026f1b241b6cadc15f34af0fe77ec9
+tests:
+  commands:
+    - python3 -m unittest discover -q
+    - Codex trinity-deep structured-output probe
+  passed: 39
+  failed: 0
+findings:
+  - Instruction-only formatting was insufficient for reliable machine-readable local-agent results.
+risks: []
+blockers: []
+evidence:
+  - CODEX_STRUCTURED_OUTPUT True
+  - .ack/evidence/AX-SELF-001-S05-rejected.yaml
+started_at_utc: "2026-08-25T09:35:00Z"
+completed_at_utc: "2026-08-25T09:37:00Z"

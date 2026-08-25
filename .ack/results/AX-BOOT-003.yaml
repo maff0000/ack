@@ -1,0 +1,22 @@
+id: AX-BOOT-003
+agent_instance: AXIOM-BOOTSTRAP
+status: completed
+summary: Axiom directly repaired worker context composition to include the exact result contract and explicit milestone progress instructions.
+changed:
+  - .ack/lib/ack/runner.py
+  - .ack/tasks/archive/AX-BOOT-003.yaml
+  - .ack/evidence/AX-SELF-001-S04-rejected.yaml
+commit: 0b9d55300810f169202fc7712edf5f861a673d4a
+tests:
+  commands:
+    - python3 -m unittest discover -q
+  passed: 38
+  failed: 0
+findings:
+  - S04 returned fenced YAML using a non-ACK schema; strict validation correctly rejected it.
+risks: []
+blockers: []
+evidence:
+  - .ack/evidence/AX-SELF-001-S04-rejected.yaml
+started_at_utc: "2026-08-25T09:31:00Z"
+completed_at_utc: "2026-08-25T09:32:00Z"

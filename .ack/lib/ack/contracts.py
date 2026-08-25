@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 import re
+from datetime import datetime, timezone
 
 import yaml
 
@@ -85,6 +86,12 @@ def validate_result(result: dict[str, Any], task_id: str, root: str | Path, expe
         raise AckError("result agent_instance does not match launched worker")
     if result["status"] not in WORKER_STATUSES:
         raise AckError("worker result status must be completed, blocked, or failed")
+    for field in ("started_at_utc", "completed_at_utc"):
+        value = result[field]
+        if isinstance(value, datetime):
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise AckError(f"result {field} must be timezone-aware UTC")
+            result[field] = value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     for field in ("agent_instance", "summary", "started_at_utc", "completed_at_utc"):
         if not isinstance(result[field], str) or not result[field].strip():
             raise AckError(f"result {field} must be a non-empty string")

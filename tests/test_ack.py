@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import os
 import tempfile
@@ -68,6 +68,10 @@ class ContractTests(unittest.TestCase):
     def test_worker_cannot_accept_result(self):
         with self.assertRaises(AckError): validate_result(result(self.root,"accepted"),"AX-001",self.root)
     def test_result_schema(self): self.assertTrue(validate_result(result(self.root),"AX-001",self.root))
+    def test_yaml_datetime_result_is_normalized(self):
+        data=result(self.root); data["started_at_utc"]=datetime.now(timezone.utc); data["completed_at_utc"]=datetime.now(timezone.utc)
+        checked=validate_result(data,"AX-001",self.root)
+        self.assertTrue(checked["started_at_utc"].endswith("Z"))
     def test_bad_result_schema(self):
         data=result(self.root); del data["tests"]
         with self.assertRaises(AckError): validate_result(data,"AX-001",self.root)

@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import threading
 import secrets
+import shutil
 from typing import Any
 
 import redis
@@ -26,6 +27,7 @@ class Runner:
         pid_root = root_from_pid(candidate_root / "PID.md")
         task = validate_task(load_yaml(task_file), pid_root)
         root = Path(task["project_root"]).resolve(strict=True)
+        token = secrets.token_urlsafe(32)
         task_file = resolve_inside(root, task_file, must_exist=True)
         working_dir = root
         branch = ""
@@ -46,11 +48,18 @@ class Runner:
         result_file = resolve_inside(working_dir, f".ack/results/{task['id']}.yaml")
         context = compose_skills(root, task["role"], task.get("skills") or [])
         prompt = context + "\n\n## TASK\n\n" + task_file.read_text(encoding="utf-8") + "\n\nReturn only valid YAML matching .ack/templates/result.yaml."
+        template_home_value = os.environ.get("CODEX_HOME")
+        if not template_home_value:
+            raise AckError("CODEX_HOME provider template is required")
+        template_home = resolve_inside(root, template_home_value, must_exist=True)
+        runtime_home = resolve_inside(root, f".ack/worktrees/.runtime-sessions/{agent}-{token[:10]}")
+        if runtime_home.exists(): raise AckError("unique worker runtime home already exists")
+        runtime_home.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(template_home, runtime_home)
         client = redis.Redis.from_url(self.config.redis_url, decode_responses=True, socket_connect_timeout=3, socket_timeout=3)
         try: client.ping()
         except Exception as exc: raise AckError(f"Redis unavailable: {type(exc).__name__}") from exc
         control = ControlPlane(client, task["project"])
-        token = secrets.token_urlsafe(32)
         slot = control.acquire_slot(agent, token, self.config.max_parallel_agents, self.config.lease_seconds)
         if slot is None: raise AckError("maximum parallel agent slots are occupied")
         try: control.start(task, agent, token, self.config.lease_seconds)
@@ -73,11 +82,13 @@ class Runner:
                 raise AckError("agent_command is required to run a worker")
             replacements = {"task_file": str(task_file), "result_file": str(result_file), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent}
             command = [self.config.sandbox_executable, "--die-with-parent", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--chdir", str(working_dir)]
+            command += ["--bind", str(runtime_home), str(runtime_home)]
             if task["type"] == "write":
                 command += ["--bind", str(working_dir), str(working_dir)]
             command += [part.format_map(replacements) for part in self.config.agent_command]
             env = {name: os.environ[name] for name in self.config.agent_env_allowlist if name in os.environ}
             env.update({"ACK_TASK_FILE": str(task_file), "ACK_RESULT_FILE": str(result_file), "ACK_PROJECT_ROOT": str(root), "ACK_MODEL_ALIAS": str(task["model"]), "ACK_AGENT_INSTANCE": agent, "ACK_LEASE_TOKEN": token, "ACK_PROJECT": str(task["project"]), "ACK_TASK_ID": str(task["id"]), "ACK_CONFIG": str(Path(os.environ.get("ACK_CONFIG", ".ack/config.yaml")).resolve())})
+            env["CODEX_HOME"] = str(runtime_home)
             env["PATH"] = f"{working_dir / '.ack/tools'}:{env.get('PATH','')}"
             process = subprocess.Popen(command, cwd=working_dir, env=env, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
             assert process.stdin is not None

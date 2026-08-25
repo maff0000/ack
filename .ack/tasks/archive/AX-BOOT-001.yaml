@@ -1,0 +1,27 @@
+id: AX-BOOT-001
+project: ack
+type: write
+role: debugger
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: 05e14c4e3cb8576b5b2b3e72608c8e3c3ec17453
+worktree: /srv/codex/ACK/.ack/worktrees/AX-BOOT-001
+skills:
+  - python
+objective: Repair Codex worker startup when its app-server requires a writable runtime home inside an otherwise read-only Scout sandbox.
+scope:
+  - .ack/lib/ack/runner.py
+must_not:
+  - Make repository source writable for read tasks.
+  - Broaden worker access beyond PROJECT_ROOT.
+acceptance:
+  - Each worker receives a unique ignored project-local runtime home.
+  - Only the runtime home is writable for a read worker.
+  - Provider configuration remains credential-free and external.
+dependencies:
+  - AX-SELF-001 initial failed launch
+risk: normal
+authority:
+  mutation_allowed: true
+  runtime_mutation_allowed: false
+status: completed

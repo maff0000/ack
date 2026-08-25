@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "agent_instance", "status", "summary", "changed", "commit", "tests", "findings", "risks", "blockers", "evidence", "started_at_utc", "completed_at_utc"],
+  "properties": {
+    "id": {"type": "string"},
+    "agent_instance": {"type": "string"},
+    "status": {"enum": ["completed", "blocked", "failed"]},
+    "summary": {"type": "string"},
+    "changed": {"type": "array", "items": {"type": "string"}},
+    "commit": {"type": "string"},
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands", "passed", "failed"],
+      "properties": {
+        "commands": {"type": "array", "items": {"type": "string"}},
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "findings": {"type": "array", "items": {"type": "string"}},
+    "risks": {"type": "array", "items": {"type": "string"}},
+    "blockers": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "started_at_utc": {"type": "string"},
+    "completed_at_utc": {"type": "string"}
+  }
+}

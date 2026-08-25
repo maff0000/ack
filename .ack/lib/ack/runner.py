@@ -46,9 +46,10 @@ class Runner:
             if not branch.startswith(required_prefix):
                 raise AckError(f"worker branch must start with {required_prefix}")
         result_file = resolve_inside(working_dir, f".ack/results/{task['id']}.yaml")
+        result_schema = resolve_inside(root, ".ack/templates/result.schema.json", must_exist=True)
         context = compose_skills(root, task["role"], task.get("skills") or [])
         result_template = resolve_inside(root, ".ack/templates/result.yaml", must_exist=True).read_text(encoding="utf-8")
-        prompt = context + "\n\n## TASK\n\n" + task_file.read_text(encoding="utf-8") + "\n\n## REQUIRED RESULT SHAPE\n\n" + result_template + "\n\nUse `ack-agent progress <phase> <concise-action>` at meaningful milestones. Return only unfenced valid YAML with exactly this result contract; do not use Markdown fences or surrounding prose."
+        prompt = context + "\n\n## TASK\n\n" + task_file.read_text(encoding="utf-8") + "\n\n## REQUIRED RESULT SHAPE\n\n" + result_template + f"\n\nYour result id must be {task['id']} and agent_instance must be {agent}. Use `ack-agent progress <phase> <concise-action>` at meaningful milestones. Return only the structured result; no Markdown fences or surrounding prose."
         template_home_value = os.environ.get("CODEX_HOME")
         if not template_home_value:
             raise AckError("CODEX_HOME provider template is required")
@@ -81,7 +82,7 @@ class Runner:
             control.progress(task["id"], agent, token, "agent", "local agent invoked")
             if not self.config.agent_command:
                 raise AckError("agent_command is required to run a worker")
-            replacements = {"task_file": str(task_file), "result_file": str(result_file), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent, "sandbox_mode": "read-only" if task["type"] == "read" else "workspace-write"}
+            replacements = {"task_file": str(task_file), "result_file": str(result_file), "result_schema": str(result_schema), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent, "sandbox_mode": "read-only" if task["type"] == "read" else "workspace-write"}
             command = [self.config.sandbox_executable, "--die-with-parent", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--chdir", str(working_dir)]
             command += ["--bind", str(runtime_home), str(runtime_home)]
             if task["type"] == "write":

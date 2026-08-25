@@ -37,7 +37,7 @@ def load_config(path: str | Path | None = None) -> Config:
         raise AckError("agent_command must be a YAML list of arguments")
     if command and Path(command[0]).name in {"sh", "bash", "dash", "zsh"}:
         raise AckError("agent_command cannot invoke a shell")
-    placeholders = {"{task_file}", "{result_file}", "{project_root}", "{working_dir}", "{model}", "{agent}", "{sandbox_mode}"}
+    placeholders = {"{task_file}", "{result_file}", "{result_schema}", "{project_root}", "{working_dir}", "{model}", "{agent}", "{sandbox_mode}"}
     for argument in command:
         if ("{" in argument or "}" in argument) and argument not in placeholders:
             raise AckError("task placeholders must occupy a complete argv element")

@@ -2,7 +2,7 @@ id: AX-SELF-001
 project: ack
 type: read
 role: scout
-model: trinity-core
+model: trinity-deep
 project_root: /srv/codex/ACK
 base_commit: fd00474f938535bdf46cbeba810e8b99e4ffe0ef
 worktree: ""

@@ -1,0 +1,30 @@
+id: AX-BOOT-004
+project: ack
+type: write
+role: debugger
+model: trinity-deep
+project_root: /srv/codex/ACK
+base_commit: b4d39a07821fe9d70c7a3b5f43c19a5a492a1d30
+worktree: /srv/codex/ACK/.ack/worktrees/AX-BOOT-004
+skills:
+  - python
+objective: Enforce the worker result contract through Codex structured output rather than instruction-only formatting.
+scope:
+  - .ack/templates/result.schema.json
+  - .ack/lib/ack/config.py
+  - .ack/lib/ack/runner.py
+  - .ack/config.example.yaml
+must_not:
+  - Weaken task/result validation.
+  - Add a new result format.
+acceptance:
+  - Codex receives a strict output schema.
+  - Structured JSON remains consumable by the YAML loader.
+  - Runner still binds id and agent_instance to the dispatched worker.
+dependencies:
+  - AX-SELF-001 S05 formatting rejection
+risk: normal
+authority:
+  mutation_allowed: true
+  runtime_mutation_allowed: false
+status: completed

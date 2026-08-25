@@ -31,4 +31,6 @@ agent_command:
   - "{project_root}"
   - -m
   - "{model}"
+  - --sandbox
+  - "{sandbox_mode}"
   - "Read the supplied context, perform only the assigned task, report meaningful progress with ack-agent, and return only the required YAML result."

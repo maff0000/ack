@@ -1,0 +1,29 @@
+id: AX-BOOT-002
+project: ack
+type: write
+role: debugger
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: 5e65176e02a0286a85990ee857ec2cf2c7f3acd4
+worktree: /srv/codex/ACK/.ack/worktrees/AX-BOOT-002
+skills:
+  - python
+objective: Select the native Codex sandbox mode from task mutation authority so read workers can inspect without requesting write semantics.
+scope:
+  - .ack/lib/ack/config.py
+  - .ack/lib/ack/runner.py
+  - .ack/config.example.yaml
+must_not:
+  - Weaken the outer PROJECT_ROOT bubblewrap boundary.
+  - Give read tasks workspace-write authority.
+acceptance:
+  - Read tasks invoke Codex read-only mode.
+  - Write tasks invoke Codex workspace-write mode inside their isolated repository.
+  - Runtime probe reads PID.md successfully under the read-only combination.
+dependencies:
+  - AX-SELF-001 S03 stalled launch
+risk: normal
+authority:
+  mutation_allowed: true
+  runtime_mutation_allowed: false
+status: completed

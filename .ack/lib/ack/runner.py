@@ -80,7 +80,7 @@ class Runner:
             control.progress(task["id"], agent, token, "agent", "local agent invoked")
             if not self.config.agent_command:
                 raise AckError("agent_command is required to run a worker")
-            replacements = {"task_file": str(task_file), "result_file": str(result_file), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent}
+            replacements = {"task_file": str(task_file), "result_file": str(result_file), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent, "sandbox_mode": "read-only" if task["type"] == "read" else "workspace-write"}
             command = [self.config.sandbox_executable, "--die-with-parent", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--chdir", str(working_dir)]
             command += ["--bind", str(runtime_home), str(runtime_home)]
             if task["type"] == "write":

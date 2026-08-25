@@ -15,8 +15,8 @@ acceptance:
   - Confirm Git commit 2bb3bac changes only README.md by two inserted lines.
   - Confirm the Builder result identifies B13 and exact commit 2bb3bacce7fb4906b736fc5cd41f8bdd94677942.
   - Return factual findings classified BLOCKER, MATERIAL, or MINOR; return no findings if clean.
-  - Use only these checks: `rg -Fxc` for the two task sentences; `git show --stat --oneline 2bb3bac`; and the Builder result file. Do not introduce any other expected sentence.
-  - Findings must be concise strings, and UTC timestamps must be quoted strings.
+  - "Use only these checks: rg -Fxc for the two task sentences; git show --stat --oneline 2bb3bac; and the Builder result file. Do not introduce any other expected sentence."
+  - "Findings must be concise strings, and UTC timestamps must be quoted strings."
 dependencies: [AX-SELF-002-R1]
 risk: low
 authority: {mutation_allowed: false, runtime_mutation_allowed: false}

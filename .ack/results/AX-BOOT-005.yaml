@@ -1,0 +1,16 @@
+id: AX-BOOT-005
+agent_instance: AXIOM-BOOTSTRAP
+status: completed
+summary: Live proof confirmed Codex native workspace-write protects .git; write workers now use native danger-full-access only inside ACK's authoritative bubblewrap boundary and private clone.
+changed: [.ack/lib/ack/runner.py, .ack/tasks/active/AX-SELF-002.yaml]
+commit: ""
+tests:
+  commands: [python3 -m unittest discover -q]
+  passed: 38
+  failed: 0
+findings: []
+risks: [The inner client has full authority only within the already-confined bubblewrap view; canonical host paths remain read-only.]
+blockers: []
+evidence: []
+started_at_utc: 2026-08-25T09:47:00Z
+completed_at_utc: 2026-08-25T09:49:25Z

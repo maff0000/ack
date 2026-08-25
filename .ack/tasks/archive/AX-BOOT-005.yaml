@@ -1,0 +1,17 @@
+id: AX-BOOT-005
+project: ack
+type: write
+role: debugger
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: 0e2f033
+worktree: ""
+skills: [security]
+objective: Repair the Codex write-worker adapter after live proof showed native workspace-write protects isolated-clone Git metadata.
+scope: [.ack/lib/ack/runner.py, .ack/tasks/active/AX-SELF-002.yaml]
+must_not: [Weaken ACK's outer bubblewrap boundary, expose canonical Git administration]
+acceptance: [Read workers remain native read-only, write workers can commit only inside the outer-bound isolated clone, unit tests pass]
+dependencies: [AX-SELF-001]
+risk: material
+authority: {mutation_allowed: true, runtime_mutation_allowed: false}
+status: completed

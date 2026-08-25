@@ -79,3 +79,5 @@ ACK v0.1 proves itself inside `/srv/codex/ACK`: Axiom dispatches a read-only Sco
 ## Project layout
 
 The portable kit contains its PID and Axiom doctrine plus `.ack/` rules, skills, templates, tasks/results/evidence/decisions, current state, runtime tools, and external configuration example. Keep additions necessary to dispatch, constrain, observe, recover, integrate, or accept work; ACK is deliberately not a general governance framework.
+Worker output follows .ack/templates/result.schema.json. Structured JSON is YAML-compatible and ACK validates it again.
+Bubblewrap makes read tasks read-only and exposes only the isolated clone to write tasks.

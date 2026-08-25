@@ -11,7 +11,7 @@ skills:
   - python
   - redis
 
-objective: Inspect ACK v0.1 against PID.md and identify one small, bounded, testable improvement or remaining gap suitable for the self-hosted Builder proof.
+objective: Inspect ACK v0.1 against repository evidence and identify exactly one real, small, bounded, testable improvement suitable for the self-hosted Builder proof.
 
 scope:
   - PID.md
@@ -26,8 +26,10 @@ must_not:
   - Spawn another agent.
 
 acceptance:
-  - Verify the portable structure against the PID.
-  - Identify exactly one small testable improvement or state that no suitable gap exists.
+  - Run `rg PROJECT_ROOT PID.md`, `find .ack -maxdepth 3 -type f`, and inspect README.md before making claims.
+  - Identify exactly one evidence-backed small testable improvement or state that no suitable gap exists.
+  - Put the commands actually run in tests.commands.
+  - Put the supporting file paths in evidence.
   - Return a concise structured result with factual evidence.
   - Report no changed files and no commit.
 

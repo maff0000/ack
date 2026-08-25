@@ -1,0 +1,39 @@
+id: AX-SELF-002
+project: ack
+type: write
+role: builder
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: 3f671d5f6720b5b345cde6c932702e284c847085
+worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
+
+skills:
+  - python
+  - security
+
+objective: Add a concise README explanation of structured worker result enforcement and task-derived native Codex sandbox modes.
+
+scope:
+  - README.md
+
+must_not:
+  - Change implementation, contracts, architecture, or unrelated documentation.
+  - Add credentials, host-specific secrets, or physical model names.
+  - Modify canonical main or merge branches.
+
+acceptance:
+  - README names `.ack/templates/result.schema.json` and explains that structured JSON is YAML-compatible and still validated by ACK.
+  - README explains read tasks use native `read-only` and write tasks use `workspace-write` inside ACK's outer bubblewrap boundary.
+  - Documentation remains concise.
+  - `python3 -m unittest discover -q` passes.
+  - Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit.
+
+dependencies:
+  - AX-SELF-001
+risk: low
+
+authority:
+  mutation_allowed: true
+  runtime_mutation_allowed: false
+
+status: queued

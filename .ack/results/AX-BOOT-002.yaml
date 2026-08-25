@@ -1,0 +1,24 @@
+id: AX-BOOT-002
+agent_instance: AXIOM-BOOTSTRAP
+status: completed
+summary: Axiom directly repaired task-derived native Codex sandbox selection after the pre-worker Scout path stalled under workspace-write semantics.
+changed:
+  - .ack/lib/ack/config.py
+  - .ack/lib/ack/runner.py
+  - .ack/config.example.yaml
+  - .ack/tasks/archive/AX-BOOT-002.yaml
+commit: 2bb76c948c841c660ed4145e1f83eda71fc96c82
+tests:
+  commands:
+    - python3 -m unittest discover -q
+    - bwrap plus Codex read-only PID.md probe
+  passed: 39
+  failed: 0
+findings:
+  - Read workers require native Codex read-only mode inside the outer ACK boundary.
+risks: []
+blockers: []
+evidence:
+  - CODEX_READ_SANDBOX OK
+started_at_utc: "2026-08-25T09:27:00Z"
+completed_at_utc: "2026-08-25T09:29:00Z"

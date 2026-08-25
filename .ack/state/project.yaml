@@ -6,9 +6,11 @@ head: fd00474f938535bdf46cbeba810e8b99e4ffe0ef
 
 current_objective: Build and self-host ACK v0.1.
 
-active_tasks:
-  - AX-SELF-001
+active_tasks: []
 blocked_tasks: []
-last_completed: []
+last_completed:
+  - id: AX-SELF-001
+    acceptance: accepted
+    result: .ack/results/AX-SELF-001.yaml
 
 last_updated_utc: "2026-08-25T09:05:00Z"

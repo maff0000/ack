@@ -22,11 +22,11 @@ must_not:
   - Modify canonical main or merge branches.
 
 acceptance:
-  - README names `.ack/templates/result.schema.json` and explains that structured JSON is YAML-compatible and still validated by ACK.
-  - README explains read tasks use native `read-only` and write tasks use `workspace-write` inside ACK's outer bubblewrap boundary.
+  - "README names `.ack/templates/result.schema.json` and explains that structured JSON is YAML-compatible and still validated by ACK."
+  - "README explains read tasks use native `read-only` and write tasks use `workspace-write` inside ACK's outer bubblewrap boundary."
   - Documentation remains concise.
-  - `python3 -m unittest discover -q` passes.
-  - Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit.
+  - "`python3 -m unittest discover -q` passes."
+  - "Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit."
 
 dependencies:
   - AX-SELF-001

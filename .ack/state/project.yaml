@@ -2,16 +2,23 @@ project: ACK
 project_root: /srv/codex/ACK
 pid_version: "0.1"
 branch: main
-head: fd00474f938535bdf46cbeba810e8b99e4ffe0ef
+head: 8fb38c618bbdbb723726dbd6767fab659eceeb9e
 
-current_objective: Build and self-host ACK v0.1.
+current_objective: ACK v0.1 self-hosted proof complete; accepted by Axiom.
 
-active_tasks:
-  - AX-SELF-002
+active_tasks: []
 blocked_tasks: []
 last_completed:
   - id: AX-SELF-001
     acceptance: accepted
     result: .ack/results/AX-SELF-001.yaml
+  - id: AX-SELF-002-R1
+    acceptance: accepted
+    result: .ack/results/AX-SELF-002-R1.yaml
+    worker_commit: 2bb3bacce7fb4906b736fc5cd41f8bdd94677942
+    integrated_commit: de5e0cba89537c888a5fd747f1b51ee4434b6935
+  - id: AX-SELF-003-R1
+    acceptance: accepted
+    result: .ack/results/AX-SELF-003-R1.yaml
 
-last_updated_utc: "2026-08-25T09:05:00Z"
+last_updated_utc: "2026-08-25T10:09:31Z"

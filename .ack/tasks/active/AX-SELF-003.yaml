@@ -1,0 +1,21 @@
+id: AX-SELF-003
+project: ack
+type: read
+role: reviewer
+model: trinity-fast
+project_root: /srv/codex/ACK
+base_commit: de5e0cba89537c888a5fd747f1b51ee4434b6935
+worktree: ""
+skills: []
+objective: Independently verify the integrated AX-SELF-002-R1 README change and its durable result without modifying the repository.
+scope: [README.md, .ack/results/AX-SELF-002-R1.yaml]
+must_not: [Modify any file, accept or reject work, investigate unrelated issues]
+acceptance:
+  - Confirm each required sentence appears exactly once in README.md.
+  - Confirm Git commit 2bb3bac changes only README.md by two inserted lines.
+  - Confirm the Builder result identifies B13 and exact commit 2bb3bacce7fb4906b736fc5cd41f8bdd94677942.
+  - Return factual findings classified BLOCKER, MATERIAL, or MINOR; return no findings if clean.
+dependencies: [AX-SELF-002-R1]
+risk: low
+authority: {mutation_allowed: false, runtime_mutation_allowed: false}
+status: queued

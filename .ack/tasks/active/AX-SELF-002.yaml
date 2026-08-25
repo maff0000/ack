@@ -12,6 +12,9 @@ skills: []
 objective: Add a concise README explanation of structured worker result enforcement and task-derived native Codex sandbox modes.
 
 # Execute with repository tools before returning a result. Modify README.md only; do not inspect or change the result schema.
+# Use this exact order once: edit README.md; run `python3 -m unittest discover -q`;
+# run `git add README.md && git commit -m "document worker result and sandbox enforcement"`;
+# run `git rev-parse HEAD`; then return every field from the required result shape.
 
 scope:
   - README.md

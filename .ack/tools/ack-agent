@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse
+import os
+import sys
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "lib"))
+
+import redis
+from ack.config import load_config
+from ack.contracts import load_yaml, validate_task
+from ack.control import ControlPlane
+from ack.errors import AckError
+from ack.git import allocate_worker_repo
+from ack.paths import root_from_pid
+from ack.runner import Runner
+
+
+def control_from_env(config):
+    project = os.environ.get("ACK_PROJECT")
+    task = os.environ.get("ACK_TASK_ID")
+    agent = os.environ.get("ACK_AGENT_INSTANCE")
+    token = os.environ.get("ACK_LEASE_TOKEN")
+    if not all((project, task, agent, token)):
+        raise AckError("ACK_PROJECT, ACK_TASK_ID, ACK_AGENT_INSTANCE, and ACK_LEASE_TOKEN are required")
+    client = redis.Redis.from_url(config.redis_url, decode_responses=True, socket_connect_timeout=3, socket_timeout=3)
+    client.ping()
+    return ControlPlane(client, project), task, agent, token
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="ACK bounded local-agent lifecycle")
+    parser.add_argument("--config", help="runtime config path")
+    subs = parser.add_subparsers(dest="command", required=True)
+    run = subs.add_parser("run"); run.add_argument("task"); run.add_argument("--agent", required=True)
+    prepare = subs.add_parser("prepare"); prepare.add_argument("task")
+    val = subs.add_parser("validate"); val.add_argument("task")
+    progress = subs.add_parser("progress"); progress.add_argument("phase"); progress.add_argument("action")
+    subs.add_parser("heartbeat")
+    args = parser.parse_args()
+    try:
+        if args.command == "validate":
+            task = load_yaml(args.task)
+            root = root_from_pid(Path(task.get("project_root", "")) / "PID.md")
+            validate_task(task, root)
+            print("VALID")
+            return 0
+        if args.command == "prepare":
+            print(allocate_worker_repo(args.task))
+            return 0
+        config = load_config(args.config)
+        if args.command == "run":
+            return Runner(config).run(args.task, args.agent)
+        control, task, agent, token = control_from_env(config)
+        if args.command == "progress": control.progress(task, agent, token, args.phase, args.action)
+        else: control.heartbeat(task, agent, token, config.lease_seconds)
+        return 0
+    except Exception as exc:
+        print(f"ACK ERROR: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

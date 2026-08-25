@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse
+from datetime import timedelta
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+
+import redis
+from ack.config import load_config
+from ack.control import ControlPlane
+from ack.errors import AckError
+from ack.time import parse_utc, utc_now
+
+
+def age(value: str) -> str:
+    if not value: return "-"
+    seconds = max(0, int((utc_now() - parse_utc(value)).total_seconds()))
+    if seconds < 60: return f"{seconds}s"
+    return f"{seconds // 60}m"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Show ACK live operational state")
+    parser.add_argument("project"); parser.add_argument("--config")
+    args = parser.parse_args()
+    try:
+        config = load_config(args.config)
+        client = redis.Redis.from_url(config.redis_url, decode_responses=True, socket_connect_timeout=3, socket_timeout=3)
+        client.ping()
+        plane = ControlPlane(client, args.project)
+        print(f"PROJECT: {args.project}\n")
+        print(f"{'TASK':10} {'AGENT':10} {'ROLE':10} {'STATUS':11} {'PHASE':12} {'HB':7} {'PROGRESS':9} HEALTH / PROGRESS / LEASE")
+        for row in sorted(plane.agents(), key=lambda x: (x.get("task", ""), x.get("agent_instance", ""))):
+            health = plane.health(row, config.degraded_seconds, config.stale_seconds)
+            progress = plane.progress_health(row, config.stale_seconds)
+            lease = "-"
+            if row.get("status") in {"starting","working"}:
+                owner = client.hget(plane.task_key(row.get("task","")), "lease_owner")
+                if not client.exists(plane.lease_key(row.get("task",""))): lease = "EXPIRED"
+                elif owner != row.get("agent_instance"): lease = "REPLACED"
+                else: lease = "ACTIVE"
+            print(f"{row.get('task','-')[:10]:10} {row.get('agent_instance','-')[:10]:10} {row.get('role','-')[:10]:10} {row.get('status','-')[:11]:11} {row.get('phase','-')[:12]:12} {age(row.get('heartbeat_at_utc','')):7} {age(row.get('progress_at_utc','')):9} {health} / {progress} / {lease}")
+            details = [f"result={row['result']}" for _ in [0] if row.get("result")] + [f"commit={row['commit']}" for _ in [0] if row.get("commit")]
+            if details: print("  " + " ".join(details))
+        return 0
+    except Exception as exc:
+        print(f"ACK ERROR: {exc}", file=sys.stderr); return 1
+
+
+if __name__ == "__main__": raise SystemExit(main())

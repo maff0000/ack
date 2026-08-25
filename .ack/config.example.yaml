@@ -6,6 +6,22 @@ degraded_seconds: 45
 stale_seconds: 90
 max_parallel_agents: 4
 
+# ACK constructs and validates the confinement arguments; only the executable is configurable.
+sandbox_executable: bwrap
+
+# Add only the provider/authentication variables deliberately required locally.
+agent_env_allowlist:
+  - PATH
+  - HOME
+  - CODEX_HOME
+  - LANG
+  - LC_ALL
+  - TERM
+  - SSL_CERT_FILE
+  - SSL_CERT_DIR
+  - ACK_LITELLM_URL
+  - ACK_API_KEY
+
 # argv only; ACK never invokes this through a shell. Placeholders are substituted.
 # Configure Codex/LiteLLM authentication and provider routing outside ACK.
 agent_command:
@@ -15,6 +31,4 @@ agent_command:
   - "{project_root}"
   - -m
   - "{model}"
-  - -o
-  - "{result_file}"
-  - "Read {context_file}, perform only the assigned task, report progress with ack-agent, and write the required YAML result."
+  - "Read the supplied context, perform only the assigned task, report meaningful progress with ack-agent, and return only the required YAML result."

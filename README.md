@@ -34,6 +34,19 @@ Path checks resolve canonical paths and must reject `..` and symlink escapes. A 
 
 Runtime configuration includes the Redis endpoint, local agent/LiteLLM invocation, heartbeat, lease and stale thresholds, maximum parallel workers, and logical model aliases. Never put endpoints with credentials or secrets in committed configuration. Logical aliases such as `trinity-fast`, `trinity-core`, and `trinity-deep` are routed to physical models externally.
 
+Install the two small Python dependencies with `python3 -m pip install -r requirements.txt`, copy `.ack/config.example.yaml` to the ignored `.ack/config.yaml`, and inject `ACK_REDIS_URL`. ACK v0.1 constructs a fixed `bubblewrap` profile that mounts the host read-only. A read worker gets no writable project bind; a write worker gets only its project-local isolated repository under `.ack/worktrees/`. Canonical files, refs, and objects remain read-only. Axiom fetches and integrates accepted worker commits. ACK refuses unsupported sandbox executables and passes only an explicit environment allowlist.
+
+Validate or dispatch a task and inspect live state with:
+
+```text
+.ack/tools/ack-agent validate .ack/tasks/active/AX-001.yaml
+.ack/tools/ack-agent prepare .ack/tasks/active/AX-001.yaml
+.ack/tools/ack-agent run .ack/tasks/active/AX-001.yaml --agent A01
+.ack/tools/ack-status ack
+```
+
+`prepare` creates write-worker repositories with `git clone --no-hardlinks`, task provenance, and a task-scoped branch. The runner rejects missing/mismatched provenance and shared canonical object inodes. The configured agent command is an argv list executed with `shell=False`; logical model aliases and provider authentication remain external. Workers can publish meaningful transitions with `ack-agent progress <phase> <concise-action>`.
+
 ## Redis state model
 
 Each project uses collision-safe namespaced keys:

@@ -7,11 +7,11 @@ project_root: /srv/codex/ACK
 base_commit: 3f671d5f6720b5b345cde6c932702e284c847085
 worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
 
-skills:
-  - python
-  - security
+skills: []
 
 objective: Add a concise README explanation of structured worker result enforcement and task-derived native Codex sandbox modes.
+
+# Execute the task with repository tools before returning a result. Do not merely describe intended work.
 
 scope:
   - README.md

@@ -1,0 +1,1 @@
+I'm reviewing the current README.md and result.schema.json to understand the existing documentation and schema enforcement. I'll update the README to clearly explain structured worker result enforcement and task-derived sandbox modes while adhering to the constraints.

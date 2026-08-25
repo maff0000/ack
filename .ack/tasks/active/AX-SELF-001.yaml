@@ -11,14 +11,13 @@ skills:
   - python
   - redis
 
-objective: Inspect ACK v0.1 against repository evidence and identify exactly one real, small, bounded, testable improvement suitable for the self-hosted Builder proof.
+objective: Determine whether README.md documents ACK's structured worker result enforcement and task-derived native Codex sandbox modes; identify exactly one bounded documentation improvement if that explanation is missing or unclear.
 
 scope:
-  - PID.md
-  - AXIOM.md
   - README.md
-  - .ack
-  - tests
+  - .ack/config.example.yaml
+  - .ack/templates/result.schema.json
+  - .ack/lib/ack/runner.py
 
 must_not:
   - Mutate repository contents.
@@ -26,8 +25,8 @@ must_not:
   - Spawn another agent.
 
 acceptance:
-  - Run `rg PROJECT_ROOT PID.md`, `find .ack -maxdepth 3 -type f`, and inspect README.md before making claims.
-  - Identify exactly one evidence-backed small testable improvement or state that no suitable gap exists.
+  - Run `rg -n 'structured|output-schema|sandbox_mode|read-only|workspace-write' README.md .ack/config.example.yaml .ack/lib/ack/runner.py` before making claims.
+  - Identify exactly one evidence-backed documentation improvement or state that no suitable gap exists.
   - Put the commands actually run in tests.commands.
   - Put the supporting file paths in evidence.
   - Return a concise structured result with factual evidence.

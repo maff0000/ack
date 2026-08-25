@@ -121,6 +121,13 @@ class Runner:
             if len(output) > 1_000_000: raise AckError("local agent result exceeded 1 MB")
             fenced = re.findall(r"```(?:json|yaml)?\s*\n(.*?)```", output, flags=re.DOTALL | re.IGNORECASE)
             if fenced: output = fenced[-1].strip() + "\n"
+            try: normalized_result = yaml.safe_load(output)
+            except yaml.YAMLError: normalized_result = None
+            if isinstance(normalized_result, dict):
+                now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                if not normalized_result.get("started_at_utc"): normalized_result["started_at_utc"] = now
+                if not normalized_result.get("completed_at_utc"): normalized_result["completed_at_utc"] = now
+                output = yaml.safe_dump(normalized_result, sort_keys=False)
             if task["type"] == "write":
                 raw = output.strip()
                 if raw.startswith("```") and raw.endswith("```"):

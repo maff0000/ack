@@ -1,0 +1,23 @@
+id: AX-SELF-002-R1
+project: ack
+type: write
+role: builder
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: f7b0204b832366956186f703cf5c77d858235c21
+worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002-R1
+skills: []
+objective: Append exactly two plain-text documentation sentences to README.md, once each, then verify them with rg and return the complete structured result.
+scope: [README.md]
+must_not:
+  - Change any other file.
+  - Repeat either sentence.
+  - Commit directly; ACK controller owns private-clone Git metadata.
+acceptance:
+  - "README contains exactly once: Worker output follows .ack/templates/result.schema.json. Structured JSON is YAML-compatible and ACK validates it again."
+  - "README contains exactly once: Bubblewrap makes read tasks read-only and exposes only the isolated clone to write tasks."
+  - Return all required result fields; controller supplies the exact commit and UTC lifecycle metadata.
+dependencies: [AX-SELF-001]
+risk: low
+authority: {mutation_allowed: true, runtime_mutation_allowed: false}
+status: queued

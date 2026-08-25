@@ -4,6 +4,7 @@ import subprocess
 import threading
 import secrets
 import shutil
+from datetime import datetime, timezone
 from typing import Any
 
 import redis
@@ -141,6 +142,9 @@ class Runner:
                     subprocess.run(["git", "-C", str(working_dir), "-c", "user.name=ACK Worker", "-c", "user.email=ack-worker@localhost", "commit", "-m", f"{task['id']}: worker output"], check=True)
                 pending_result["commit"] = subprocess.run(["git", "-C", str(working_dir), "rev-parse", "HEAD"], check=True, text=True, capture_output=True).stdout.strip()
                 pending_result["changed"] = dirty_paths
+                now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                if not pending_result.get("started_at_utc"): pending_result["started_at_utc"] = now
+                if not pending_result.get("completed_at_utc"): pending_result["completed_at_utc"] = now
                 output = yaml.safe_dump(pending_result, sort_keys=False)
                 dirty = subprocess.run(["git", "-C", str(working_dir), "status", "--porcelain"], check=True, text=True, capture_output=True).stdout.strip()
                 if dirty: raise AckError("worker controller could not produce a clean commit")

@@ -1,0 +1,21 @@
+id: ""
+agent_instance: ""
+status: completed  # completed | blocked | failed; never accepted/rejected
+
+summary: ""
+
+changed: []
+commit: ""
+
+tests:
+  commands: []
+  passed: 0
+  failed: 0
+
+findings: []
+risks: []
+blockers: []
+evidence: []
+
+started_at_utc: ""
+completed_at_utc: ""

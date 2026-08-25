@@ -1,0 +1,4 @@
+.ack/config.yaml
+.ack/worktrees/
+__pycache__/
+*.py[cod]

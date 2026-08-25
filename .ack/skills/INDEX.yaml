@@ -1,0 +1,61 @@
+skills:
+  - name: core
+    category: core
+    path: .ack/rules/CORE.md
+    purpose: Define non-negotiable worker boundaries and engineering rules.
+    use_when: Always include.
+  - name: scout
+    category: role
+    path: .ack/skills/roles/scout.md
+    purpose: Repository archaeology and risk discovery.
+    use_when: Read-only inspection is needed.
+  - name: builder
+    category: role
+    path: .ack/skills/roles/builder.md
+    purpose: Implement a bounded coherent change.
+    use_when: Repository mutation is authorised.
+  - name: tester
+    category: role
+    path: .ack/skills/roles/tester.md
+    purpose: Independently verify behaviour and acceptance criteria.
+    use_when: Change behaviour requires assurance.
+  - name: reviewer
+    category: role
+    path: .ack/skills/roles/reviewer.md
+    purpose: Adversarially inspect correctness, architecture, and risk.
+    use_when: Material or security-sensitive work warrants review.
+  - name: debugger
+    category: role
+    path: .ack/skills/roles/debugger.md
+    purpose: Reproduce and diagnose a defined failure.
+    use_when: A specific failure needs root-cause analysis.
+  - name: python
+    category: engineering
+    path: .ack/skills/engineering/python.md
+    purpose: Apply ACK Python engineering expectations.
+    use_when: Python code is in task scope.
+  - name: docker
+    category: engineering
+    path: .ack/skills/engineering/docker.md
+    purpose: Apply portable container and lifecycle expectations.
+    use_when: Container images or services are in scope.
+  - name: redis
+    category: engineering
+    path: .ack/skills/engineering/redis.md
+    purpose: Apply namespace, retention, and operational-state rules.
+    use_when: Redis behaviour is in scope.
+  - name: sql
+    category: engineering
+    path: .ack/skills/engineering/sql.md
+    purpose: Apply safe schema and query practices.
+    use_when: Relational data or migrations are in scope.
+  - name: security
+    category: engineering
+    path: .ack/skills/engineering/security.md
+    purpose: Apply explicit trust-boundary and least-privilege review.
+    use_when: Security-sensitive behaviour or data is in scope.
+  - name: project
+    category: project
+    path: .ack/skills/project/PROJECT.md
+    purpose: Supply essential project-specific invariants.
+    use_when: Always include for this project.

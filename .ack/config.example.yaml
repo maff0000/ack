@@ -1,0 +1,20 @@
+# Copy to an ignored project-local runtime config and supply real values externally.
+redis_url: ${ACK_REDIS_URL}
+heartbeat_seconds: 20
+lease_seconds: 60
+degraded_seconds: 45
+stale_seconds: 90
+max_parallel_agents: 4
+
+# argv only; ACK never invokes this through a shell. Placeholders are substituted.
+# Configure Codex/LiteLLM authentication and provider routing outside ACK.
+agent_command:
+  - codex
+  - exec
+  - -C
+  - "{project_root}"
+  - -m
+  - "{model}"
+  - -o
+  - "{result_file}"
+  - "Read {context_file}, perform only the assigned task, report progress with ack-agent, and write the required YAML result."

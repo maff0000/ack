@@ -1,0 +1,13 @@
+project: ACK
+project_root: /srv/codex/ACK
+pid_version: "0.1"
+branch: ""
+head: ""
+
+current_objective: Build and self-host ACK v0.1.
+
+active_tasks: []
+blocked_tasks: []
+last_completed: []
+
+last_updated_utc: ""

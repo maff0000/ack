@@ -1,0 +1,25 @@
+id: ""
+project: ""
+type: read  # read | write
+role: scout
+model: trinity-fast
+project_root: ""
+base_commit: ""
+worktree: ""
+
+skills: []
+
+objective: ""
+
+scope: []
+must_not: []
+acceptance: []
+dependencies: []
+
+risk: low
+
+authority:
+  mutation_allowed: false
+  runtime_mutation_allowed: false
+
+status: queued

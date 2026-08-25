@@ -2,7 +2,7 @@ id: AX-SELF-002
 project: ack
 type: write
 role: builder
-model: trinity-fast
+model: trinity-core
 project_root: /srv/codex/ACK
 base_commit: 3f671d5f6720b5b345cde6c932702e284c847085
 worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
@@ -12,7 +12,7 @@ skills: []
 objective: Add a concise README explanation of structured worker result enforcement and ACK's task-derived outer sandbox modes.
 
 # Execute with repository tools before returning a result. Modify README.md only; do not inspect other files.
-# Your first action must be one shell call that appends the two concise sentences below and runs the tests.
+# Your first action must be one shell call that appends the two concise sentences below and verifies them with `rg`.
 # ACK's controller creates the attributable isolated-branch commit because managed Codex protects Git metadata.
 # Sentence 1: Worker output follows `.ack/templates/result.schema.json`; its structured JSON is YAML-compatible and ACK validates it again.
 # Sentence 2: ACK's outer bubblewrap boundary is read-only for read tasks and exposes only the isolated clone as writable for write tasks; Codex's explicit external-sandbox mode does not expand that view.
@@ -29,7 +29,7 @@ acceptance:
   - "README names `.ack/templates/result.schema.json` and explains that structured JSON is YAML-compatible and still validated by ACK."
   - "README explains that bubblewrap makes read tasks read-only and exposes only the isolated clone as writable for write tasks, while Codex runs in its explicit external-sandbox mode."
   - Documentation remains concise.
-  - "`python3 -m unittest discover -q` passes."
+  - "A targeted `rg` check finds both new documentation statements; Axiom runs the canonical suite after integration."
   - "ACK's controller creates the worker-attributable commit on `ack/AX-SELF-002/worker` after validating changed paths against scope."
 
 dependencies:

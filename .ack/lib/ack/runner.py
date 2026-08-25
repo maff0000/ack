@@ -47,7 +47,8 @@ class Runner:
                 raise AckError(f"worker branch must start with {required_prefix}")
         result_file = resolve_inside(working_dir, f".ack/results/{task['id']}.yaml")
         context = compose_skills(root, task["role"], task.get("skills") or [])
-        prompt = context + "\n\n## TASK\n\n" + task_file.read_text(encoding="utf-8") + "\n\nReturn only valid YAML matching .ack/templates/result.yaml."
+        result_template = resolve_inside(root, ".ack/templates/result.yaml", must_exist=True).read_text(encoding="utf-8")
+        prompt = context + "\n\n## TASK\n\n" + task_file.read_text(encoding="utf-8") + "\n\n## REQUIRED RESULT SHAPE\n\n" + result_template + "\n\nUse `ack-agent progress <phase> <concise-action>` at meaningful milestones. Return only unfenced valid YAML with exactly this result contract; do not use Markdown fences or surrounding prose."
         template_home_value = os.environ.get("CODEX_HOME")
         if not template_home_value:
             raise AckError("CODEX_HOME provider template is required")

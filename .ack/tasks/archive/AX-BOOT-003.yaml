@@ -1,0 +1,27 @@
+id: AX-BOOT-003
+project: ack
+type: write
+role: debugger
+model: trinity-core
+project_root: /srv/codex/ACK
+base_commit: 9087d143961b32d5ecad3391755b3d88edce06f4
+worktree: /srv/codex/ACK/.ack/worktrees/AX-BOOT-003
+skills:
+  - python
+objective: Ensure local workers receive the exact result contract and explicit live progress invocation.
+scope:
+  - .ack/lib/ack/runner.py
+must_not:
+  - Weaken result validation.
+  - Accept arbitrary fenced or prose output.
+acceptance:
+  - Worker context includes the exact result template.
+  - Worker is explicitly directed to emit milestone progress.
+  - Worker is explicitly directed to return unfenced YAML only.
+dependencies:
+  - AX-SELF-001 S04 contract rejection
+risk: low
+authority:
+  mutation_allowed: true
+  runtime_mutation_allowed: false
+status: completed

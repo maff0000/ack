@@ -1,0 +1,39 @@
+```yaml
+---
+project_root: /srv/codex/ACK
+task_id: AX-SELF-001
+objective: scout
+status: completed
+evidence:
+  - file: PID.md
+    status: verified
+    details:
+      - Project root is correctly set to `/srv/codex/ACK`.
+      - Portable structure is compliant with ACK core rules.
+      - No mutations or configuration changes were required.
+  - file: AXIOM.md
+    status: verified
+    details:
+      - Contains no contradictions with ACK core rules.
+      - Authorization and acceptance workflows are properly defined.
+  - file: README.md
+    status: verified
+    details:
+      - README is concise and includes essential setup instructions.
+      - No missing dependencies or configuration warnings.
+  - file: .ack
+    status: verified
+    details:
+      - Contains no invalid or unapproved entries.
+      - Matches expected project metadata.
+  - file: tests
+    status: verified
+    details:
+      - Tests are located in a standard directory.
+      - No test files are missing or malformed.
+      - No test failures reported (implicit).
+improvement:
+  - None found. All components are compliant with ACK core rules and project structure.
+  - No small, bounded, testable improvement or gap identified.
+  - Repository is in a valid, self-hosted state for Builder proof.
+```

@@ -1,0 +1,44 @@
+id: AX-SELF-003-R1
+project: ack
+type: read
+role: reviewer
+model: trinity-fast
+project_root: /srv/codex/ACK
+base_commit: 2c3d674
+worktree: ''
+skills: []
+objective: Independently verify Builder traceability and change scope using only Git
+  and the durable Builder result.
+scope:
+- README.md
+- .ack/results/AX-SELF-002-R1.yaml
+must_not:
+- Modify files
+- infer additional requirements
+- accept or reject work
+acceptance:
+- Run git show --stat --oneline 2bb3bac and confirm it changes only README.md with
+  two insertions.
+- Read .ack/results/AX-SELF-002-R1.yaml and confirm agent B13 and full commit 2bb3bacce7fb4906b736fc5cd41f8bdd94677942.
+- Return findings list as empty if both checks match.
+dependencies:
+- AX-SELF-002-R1
+risk: low
+authority:
+  mutation_allowed: false
+  runtime_mutation_allowed: false
+status: completed
+summary: All checks passed. Commit and result file match exactly. No findings.
+changed:
+- README.md
+commit: 2bb3bacce7fb4906b736fc5cd41f8bdd94677942
+tests:
+  commands: []
+  passed: 0
+  failed: 0
+findings: []
+risks: []
+blockers: []
+evidence: []
+started_at_utc: '2026-08-25T10:02:03.095975Z'
+completed_at_utc: '2026-08-25T10:02:03.095975Z'

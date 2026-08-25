@@ -125,8 +125,15 @@ class Runner:
             except yaml.YAMLError: normalized_result = None
             if isinstance(normalized_result, dict):
                 now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                normalized_result["id"] = task["id"]
+                normalized_result["agent_instance"] = agent
+                if task["type"] == "read":
+                    normalized_result["changed"] = []
+                    normalized_result["commit"] = ""
                 if not normalized_result.get("started_at_utc"): normalized_result["started_at_utc"] = now
                 if not normalized_result.get("completed_at_utc"): normalized_result["completed_at_utc"] = now
+                result_fields = {"id", "agent_instance", "status", "summary", "changed", "commit", "tests", "findings", "risks", "blockers", "evidence", "started_at_utc", "completed_at_utc"}
+                normalized_result = {key: value for key, value in normalized_result.items() if key in result_fields}
                 output = yaml.safe_dump(normalized_result, sort_keys=False)
             if task["type"] == "write":
                 raw = output.strip()

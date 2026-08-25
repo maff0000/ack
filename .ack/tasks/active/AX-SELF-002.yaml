@@ -2,7 +2,7 @@ id: AX-SELF-002
 project: ack
 type: write
 role: builder
-model: trinity-deep
+model: trinity-fast
 project_root: /srv/codex/ACK
 base_commit: 3f671d5f6720b5b345cde6c932702e284c847085
 worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
@@ -11,7 +11,7 @@ skills: []
 
 objective: Add a concise README explanation of structured worker result enforcement and task-derived native Codex sandbox modes.
 
-# Execute the task with repository tools before returning a result. Do not merely describe intended work.
+# Execute with repository tools before returning a result. Modify README.md only; do not inspect or change the result schema.
 
 scope:
   - README.md

@@ -5,6 +5,7 @@ import threading
 import secrets
 import shutil
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 import redis
@@ -118,6 +119,8 @@ class Runner:
             if reader.is_alive(): raise AckError("local agent result stream did not close")
             output = "".join(output_parts)
             if len(output) > 1_000_000: raise AckError("local agent result exceeded 1 MB")
+            fenced = re.findall(r"```(?:json|yaml)?\s*\n(.*?)```", output, flags=re.DOTALL | re.IGNORECASE)
+            if fenced: output = fenced[-1].strip() + "\n"
             if task["type"] == "write":
                 raw = output.strip()
                 if raw.startswith("```") and raw.endswith("```"):

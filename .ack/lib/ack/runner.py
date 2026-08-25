@@ -82,10 +82,7 @@ class Runner:
             control.progress(task["id"], agent, token, "agent", "local agent invoked")
             if not self.config.agent_command:
                 raise AckError("agent_command is required to run a worker")
-            # Codex workspace-write deliberately protects .git. Write workers are
-            # already confined by ACK's outer bubblewrap boundary to a private,
-            # project-local clone, so the inner client must allow Git metadata.
-            native_sandbox = "read-only" if task["type"] == "read" else "danger-full-access"
+            native_sandbox = "read-only" if task["type"] == "read" else "workspace-write"
             replacements = {"task_file": str(task_file), "result_file": str(result_file), "result_schema": str(result_schema), "project_root": str(root), "working_dir": str(working_dir), "model": str(task["model"]), "agent": agent, "sandbox_mode": native_sandbox}
             command = [self.config.sandbox_executable, "--die-with-parent", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp", "--chdir", str(working_dir)]
             command += ["--bind", str(runtime_home), str(runtime_home)]

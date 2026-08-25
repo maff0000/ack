@@ -9,13 +9,13 @@ worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
 
 skills: []
 
-objective: Add a concise README explanation of structured worker result enforcement and task-derived Codex sandbox modes.
+objective: Add a concise README explanation of structured worker result enforcement and ACK's task-derived outer sandbox modes.
 
 # Execute with repository tools before returning a result. Modify README.md only; do not inspect other files.
 # Your first action must be one shell call that appends the two concise sentences below, runs the tests,
 # stages README.md, and commits it. Then run `git rev-parse HEAD` and return every required result field.
 # Sentence 1: Worker output follows `.ack/templates/result.schema.json`; its structured JSON is YAML-compatible and ACK validates it again.
-# Sentence 2: Inside ACK's outer bubblewrap boundary, read tasks use native `read-only`; isolated write clones use native `danger-full-access` so Git metadata is writable without expanding the outer boundary.
+# Sentence 2: ACK's outer bubblewrap boundary is read-only for read tasks and exposes only the isolated clone as writable for write tasks; Codex's explicit external-sandbox mode does not expand that view.
 
 scope:
   - README.md
@@ -27,7 +27,7 @@ must_not:
 
 acceptance:
   - "README names `.ack/templates/result.schema.json` and explains that structured JSON is YAML-compatible and still validated by ACK."
-  - "README explains read tasks use native `read-only` and isolated write clones use `danger-full-access` inside ACK's outer bubblewrap boundary."
+  - "README explains that bubblewrap makes read tasks read-only and exposes only the isolated clone as writable for write tasks, while Codex runs in its explicit external-sandbox mode."
   - Documentation remains concise.
   - "`python3 -m unittest discover -q` passes."
   - "Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit."

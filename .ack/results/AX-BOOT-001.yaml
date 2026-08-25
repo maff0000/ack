@@ -1,0 +1,22 @@
+id: AX-BOOT-001
+agent_instance: AXIOM-BOOTSTRAP
+status: completed
+summary: Axiom directly repaired the pre-worker bootstrap failure by allocating a unique ignored writable Codex runtime home while retaining a read-only repository sandbox.
+changed:
+  - .ack/lib/ack/runner.py
+  - .ack/tasks/archive/AX-BOOT-001.yaml
+  - .ack/results/AX-BOOT-001.yaml
+commit: 4ab6d5088c8abae7c6548ff17e773f7916704812
+tests:
+  commands:
+    - python3 -m unittest discover -v
+  passed: 38
+  failed: 0
+findings:
+  - Initial AX-SELF-001 launch failed because the Codex in-process app-server required writable runtime state.
+risks: []
+blockers: []
+evidence:
+  - Redis task_failed event for the initial S01 attempt.
+started_at_utc: "2026-08-25T09:18:00Z"
+completed_at_utc: "2026-08-25T09:19:00Z"

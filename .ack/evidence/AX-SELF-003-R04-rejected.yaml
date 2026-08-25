@@ -1,0 +1,21 @@
+id: AX-SELF-003
+agent_instance: R04
+status: completed
+summary: Required sentences not found in README.md. All other checks passed.
+changed: []
+commit: 
+
+tests:
+  commands: []
+  passed: 0
+  failed: 0
+
+findings:
+  - MINOR: Required sentences not found in README.md
+
+risks: []
+blockers: []
+evidence: []
+
+started_at_utc: "2026-08-25T10:02:03.095975Z"
+completed_at_utc: "2026-08-25T10:02:03.095975Z"

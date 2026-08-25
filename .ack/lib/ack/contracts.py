@@ -95,6 +95,8 @@ def validate_result(result: dict[str, Any], task_id: str, root: str | Path, expe
     for field in ("agent_instance", "summary", "started_at_utc", "completed_at_utc"):
         if not isinstance(result[field], str) or not result[field].strip():
             raise AckError(f"result {field} must be a non-empty string")
+    if result["commit"] is None:
+        result["commit"] = ""
     if not isinstance(result["commit"], str):
         raise AckError("result commit must be a string")
     try:

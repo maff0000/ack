@@ -2,7 +2,7 @@ id: AX-SELF-002
 project: ack
 type: write
 role: builder
-model: trinity-core
+model: trinity-deep
 project_root: /srv/codex/ACK
 base_commit: 3f671d5f6720b5b345cde6c932702e284c847085
 worktree: /srv/codex/ACK/.ack/worktrees/AX-SELF-002
@@ -27,6 +27,7 @@ acceptance:
   - Documentation remains concise.
   - "`python3 -m unittest discover -q` passes."
   - "Worker commits the change on `ack/AX-SELF-002/worker` and returns that commit."
+  - "Use Git commands in the isolated worker repository: stage README.md, create a real commit, and report the exact output of `git rev-parse HEAD`; never invent a commit ID."
 
 dependencies:
   - AX-SELF-001

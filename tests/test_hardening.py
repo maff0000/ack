@@ -150,6 +150,25 @@ class PreflightTests(unittest.TestCase):
         self.assertIn("REDIS            DEGRADED ConnectionError", text)
         self.assertIn("STATUS           READY DEGRADED", text)
 
+    def test_managed_preflight_defers_nested_bwrap_to_host_broker(self):
+        config = self.root / ".ack/config.yaml"
+        config.write_text(f"redis_url: redis://127.0.0.1:1/0\nsandbox_executable: bwrap\nagent_command: [{sys.executable}]\n")
+        real_run = subprocess.run
+        bwrap_calls = []
+        def reject_nested_probe(argv, *args, **kwargs):
+            if argv and Path(argv[0]).name == "bwrap":
+                bwrap_calls.append(argv)
+                raise AssertionError("managed preflight must not probe nested bwrap")
+            return real_run(argv, *args, **kwargs)
+        client = unittest.mock.Mock()
+        client.ping.side_effect = ConnectionError("unavailable")
+        with patch("ack.pl.subprocess.run", side_effect=reject_nested_probe), patch("ack.pl.redis.Redis.from_url", return_value=client):
+            ready, lines = preflight(self.root, config, allow_redis_degraded=True)
+        text = "\n".join(lines)
+        self.assertTrue(ready, text)
+        self.assertIn("WORKER_RUNTIME   DEFERRED host broker probe", text)
+        self.assertFalse(bwrap_calls)
+
 
 class McpBridgeTests(unittest.TestCase):
     def setUp(self):

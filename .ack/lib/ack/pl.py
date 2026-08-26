@@ -179,21 +179,11 @@ def preflight(root_value: str | Path, config_path: str | Path | None = None, *, 
         failed = True
         report("REMOTE_QUERY", f"FAIL {type(exc).__name__}: {exc}")
 
-    sandbox = shutil.which("bwrap")
-    if not sandbox:
-        failed = True
-        report("WORKER_RUNTIME", "FAIL bubblewrap executable not found")
-    else:
-        probe = subprocess.run(
-            [sandbox, "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "true"],
-            check=False, text=True, capture_output=True,
-        )
-        if probe.returncode == 0:
-            report("WORKER_RUNTIME")
-        else:
-            failed = True
-            detail = probe.stderr.strip() or f"bubblewrap exited {probe.returncode}"
-            report("WORKER_RUNTIME", f"FAIL {detail}")
+    # Worker sandbox capability belongs to the host-side broker.  PL may run
+    # inside an already confined Codex process, where probing bwrap again would
+    # incorrectly require a nested namespace.  BrokerProcess/serve_broker runs
+    # the authoritative probe before accepting managed control traffic.
+    report("WORKER_RUNTIME", "DEFERRED host broker probe")
 
     try:
         config = load_config(config_path or root / ".ack/config.yaml", require_redis=not allow_redis_degraded)

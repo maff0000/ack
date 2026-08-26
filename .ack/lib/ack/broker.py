@@ -135,7 +135,7 @@ def dispatch(root: Path, operation: str, raw_arguments: Any) -> dict[str, Any]:
 
 
 def bwrap_probe() -> tuple[int, str]:
-    probe = subprocess.run(["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "/bin/true"], shell=False, capture_output=True, text=True)
+    probe = subprocess.run(["bwrap", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "/bin/true"], shell=False, capture_output=True, text=True)
     return probe.returncode, redact(probe.stderr)
 
 

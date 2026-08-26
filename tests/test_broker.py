@@ -28,6 +28,7 @@ from ack.broker import (
     broker_identity,
     bwrap_probe,
     dispatch,
+    serve_broker,
 )
 from ack.errors import AckError
 from ack.mcp_server import serve
@@ -276,9 +277,22 @@ class BrokerTests(unittest.TestCase):
         with patch("ack.broker.subprocess.run", return_value=completed) as run:
             self.assertEqual(bwrap_probe(), (0, ""))
         run.assert_called_once_with(
-            ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "/bin/true"],
+            ["bwrap", "--new-session", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "/bin/true"],
             shell=False, capture_output=True, text=True,
         )
+
+    def test_host_probe_red_blocks_broker_start(self) -> None:
+        with patch("ack.broker.bwrap_probe", return_value=(1, "namespace denied")):
+            with self.assertRaisesRegex(AckError, "host broker bwrap probe failed: namespace denied"):
+                serve_broker(Path("/srv/codex/ACK"), Path("/tmp/ack-test-broker.sock"), "nonce")
+
+    def test_host_probe_green_starts_broker_for_managed_control(self) -> None:
+        server = MagicMock()
+        server.__enter__.return_value = server
+        with patch("ack.broker.bwrap_probe", return_value=(0, "")), patch("ack.broker.BrokerServer", return_value=server) as broker:
+            serve_broker(Path("/srv/codex/ACK"), Path("/tmp/ack-test-broker.sock"), "nonce")
+        broker.assert_called_once_with(Path("/srv/codex/ACK"), Path("/tmp/ack-test-broker.sock"), "nonce")
+        server.serve_forever.assert_called_once_with(poll_interval=0.2)
 
     def test_broker_failure_prevents_codex_fallback(self) -> None:
         root = Path(__file__).resolve().parents[1]

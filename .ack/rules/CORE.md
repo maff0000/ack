@@ -20,3 +20,17 @@
 18. Return concise structured results. Acceptance criteria are required actions and outcomes, not facts to repeat. Worker `completed` means the bounded task was actually executed, including required mutation and testing.
 19. Only Axiom may ACCEPT or REJECT project work; workers use only `completed`, `blocked`, or `failed`.
 20. If required work crosses `PROJECT_ROOT`, stop and report `blocked`.
+
+## Delivery decomposition doctrine
+
+Axiom carries planning intelligence; workers receive narrow executable deliveries. A work item should be the
+smallest independently verifiable delivery that materially advances the PID: one clear objective, one narrow
+mutation surface, one focused verification target, and one obvious completion condition. Prefer roughly one or
+two primary source files, one behaviour change, one focused test command, and a small bounded acceptance set.
+
+Before dispatch, PL actively considers decomposition when work combines independent behaviours, schema/CRUD/
+validation/integration, UI/persistence/API, multiple subsystem concepts, more than two primary implementation
+files, a large acceptance list, or several natural acceptance points. These are planning heuristics, not brittle
+limits. ACK validation may surface advisories, but does not reject a task solely for size; informed PL judgment
+decides. Each accepted delivery becomes the governed base commit for the next delivery. Do not compensate for a
+broad task by expanding worker prompts.

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(ROOT / ".ack/lib"))
 
-from ack.contracts import validate_result, validate_task
+from ack.contracts import planning_advisories, validate_result, validate_task
 from ack.config import load_config
 from ack.control import ControlPlane, STATUS_FIELDS
 from ack.errors import AckError
@@ -52,6 +52,22 @@ class BoundaryTests(unittest.TestCase):
     def test_symlink_escape_rejected(self):
         outside = Path(self.tmp.name) / "outside"; outside.mkdir(); (self.root / "link").symlink_to(outside, target_is_directory=True)
         with self.assertRaises(AckError): resolve_inside(self.root, "link/file")
+
+    def test_planning_advisories_are_non_blocking_heuristics(self):
+        data = task(self.root, "write", True)
+        data["scope"] = ["one.py", "two.py", "three.py"]
+        data["acceptance"] = [str(index) for index in range(7)]
+        self.assertEqual(
+            planning_advisories(data),
+            [
+                "multiple primary paths: consider sequential independently verifiable deliveries",
+                "large acceptance set: consider decomposing into bounded deliveries",
+            ],
+        )
+        validate_task(data, self.root)
+
+    def test_small_task_has_no_planning_advisory(self):
+        self.assertEqual(planning_advisories(task(self.root)), [])
     def test_pid_root(self):
         (self.root/"PID.md").write_text(f"PROJECT_ROOT: `{self.root}`\n")
         self.assertEqual(root_from_pid(self.root/"PID.md"), self.root.resolve())

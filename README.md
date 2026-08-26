@@ -67,13 +67,23 @@ Redis must not contain secrets, code, full prompts, or reasoning traces. Heartbe
 
 ## Task lifecycle
 
-1. Axiom creates a bounded task with root, base commit, role, logical model, skills, authority, risk, and acceptance criteria.
+1. Axiom decomposes the PID into the smallest independently verifiable deliveries that materially advance it, then creates a bounded task with root, base commit, role, logical model, skills, authority, risk, and acceptance criteria. Each accepted delivery becomes the governed base commit for the next one.
 2. The worker validates the task/root, acquires a lease, publishes status and events, loads selective skills, and performs only authorised work.
 3. Write workers use isolated project-local worktrees where appropriate, test, commit, and write a structured result.
 4. An independent Tester or Reviewer checks normal/material work in proportion to risk.
 5. Axiom inspects results, diff, commit, tests, and evidence; integrates and runs canonical checks; then records acceptance or rejection.
 
 Independent uncertainty may be parallelised (up to four workers by default). Dependent mutation and canonical integration are serialised. Workers never spawn workers or merge canonical work.
+
+### Delivery decomposition
+
+Axiom carries planning intelligence; workers receive narrow executable deliveries. PL should actively consider
+sequential deliveries when a task combines independent behaviours, multiple subsystem concepts, more than two
+primary implementation files, a large acceptance list, or multiple natural acceptance points. A good delivery
+usually has one clear objective, one narrow mutation surface, one focused verification target, and one obvious
+completion condition. The one-or-two-file, one-behaviour, and small-acceptance-set guidance is heuristic, not a
+hard rejection rule. ACK validation can return non-blocking planning advisories so PL can exercise informed
+judgment; broad prompts are not a substitute for decomposition.
 
 ## Recovery
 

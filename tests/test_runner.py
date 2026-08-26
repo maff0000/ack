@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import inspect
 from unittest.mock import patch
 
 
@@ -19,12 +20,14 @@ from ack.runner import (
     execution_task,
     finalize_completed_write,
     _bounded_diagnostic,
+    _drain_worker_streams,
     _preserve_failure_session,
     _scoped_git_snapshot,
     _write_worker_diagnostic,
     worker_runtime_profile,
     worker_subprocess_environment,
     worker_template_home,
+    Runner,
 )
 from ack.skills import compose_skills
 
@@ -400,6 +403,57 @@ class WorkerInstructionContractTests(unittest.TestCase):
 
 
 class WorkerDiagnosticTests(unittest.TestCase):
+    def test_oversized_stderr_is_drained_without_terminating_child(self) -> None:
+        marker = b"terminal-tail-marker"
+        script = (
+            "import sys; "
+            "sys.stderr.buffer.write(b'x' * (1024 * 1024 + 123)); "
+            f"sys.stderr.buffer.write({marker!r}); sys.stderr.flush()"
+        )
+        process = subprocess.Popen(
+            [sys.executable, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr, stdout_thread, stderr_thread = _drain_worker_streams(process)
+        self.assertEqual(process.wait(timeout=10), 0)
+        stdout_thread.join(timeout=2)
+        stderr_thread.join(timeout=2)
+        process.stdout.close()
+        process.stderr.close()
+
+        self.assertFalse(stdout_thread.is_alive())
+        self.assertFalse(stderr_thread.is_alive())
+        self.assertEqual(stdout.stats(), {"total_bytes": 0, "retained_bytes": 0, "truncated": False})
+        self.assertEqual(stderr.total_bytes, 1024 * 1024 + 123 + len(marker))
+        self.assertEqual(stderr.stats()["retained_bytes"], 16_384)
+        self.assertTrue(stderr.stats()["truncated"])
+        self.assertTrue(stderr.text().endswith(marker.decode()))
+
+    def test_small_worker_streams_and_structured_result_are_unchanged(self) -> None:
+        result = b"status: completed\nsummary: ok\n"
+        process = subprocess.Popen(
+            [sys.executable, "-c", f"import sys; sys.stdout.buffer.write({result!r}); sys.stderr.write('diagnostic')"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr, stdout_thread, stderr_thread = _drain_worker_streams(process)
+        self.assertEqual(process.wait(timeout=10), 0)
+        stdout_thread.join(timeout=2)
+        stderr_thread.join(timeout=2)
+        process.stdout.close()
+        process.stderr.close()
+        self.assertEqual(stdout.text(), result.decode())
+        self.assertEqual(stderr.text(), "diagnostic")
+        self.assertEqual(stdout.stats(), {"total_bytes": len(result), "retained_bytes": len(result), "truncated": False})
+        self.assertEqual(stderr.stats(), {"total_bytes": 10, "retained_bytes": 10, "truncated": False})
+
+    def test_lease_loss_termination_remains_governed(self) -> None:
+        source = inspect.getsource(Runner.run)
+        self.assertIn("if stop.wait(1) and lost:", source)
+        self.assertIn("process.terminate()", source)
+        self.assertIn("worker lease lost", source)
+
     def test_diagnostic_output_is_redacted_bounded_and_private(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".ack/runtime/diagnostics/attempt.yaml"

@@ -15,7 +15,7 @@ import redis
 
 from .config import load_config
 from .control import ControlPlane
-from .contracts import load_yaml, validate_result, validate_task
+from .contracts import load_yaml, planning_advisories, validate_result, validate_task
 from .errors import AckError
 from .git import allocate_worker_repo, commit_project_paths, integrate_worker_commit, push_project_head
 from .paths import resolve_inside, root_from_pid
@@ -109,7 +109,7 @@ def dispatch(root: Path, operation: str, raw_arguments: Any) -> dict[str, Any]:
     if operation == "ack_worker_validate":
         task = load_yaml(_task_path(root, arguments["task"]))
         validate_task(task, root_from_pid(root / "PID.md"))
-        return {"status": "PASS", "task": task["id"]}
+        return {"status": "PASS", "task": task["id"], "planning_advisories": planning_advisories(task)}
     if operation == "ack_worker_prepare":
         worker = allocate_worker_repo(_task_path(root, arguments["task"]))
         return {"status": "PASS", "worker": worker.relative_to(root).as_posix()}

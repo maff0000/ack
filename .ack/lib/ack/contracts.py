@@ -15,6 +15,16 @@ LIVE_STATUSES = {"queued", "starting", "working", "blocked", "failed", "complete
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
+def planning_advisories(task: dict[str, Any]) -> list[str]:
+    """Return non-blocking decomposition prompts for Axiom's planning review."""
+    advisories: list[str] = []
+    if task.get("type") == "write" and len(task.get("scope") or []) > 2:
+        advisories.append("multiple primary paths: consider sequential independently verifiable deliveries")
+    if len(task.get("acceptance") or []) > 6:
+        advisories.append("large acceptance set: consider decomposing into bounded deliveries")
+    return advisories
+
+
 def load_yaml(path: str | Path) -> dict[str, Any]:
     try:
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))

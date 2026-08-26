@@ -32,6 +32,53 @@ DIAGNOSTIC_OUTPUT_LIMIT = 16_384
 SESSION_TRACE_LIMIT = 1_048_576
 
 
+class _BoundedStreamCapture:
+    """Drain a worker stream while retaining only its diagnostic tail."""
+
+    def __init__(self, limit: int = DIAGNOSTIC_OUTPUT_LIMIT) -> None:
+        self.limit = limit
+        self._buffer = bytearray()
+        self.total_bytes = 0
+        self.truncated = False
+
+    def append(self, chunk: bytes) -> None:
+        self.total_bytes += len(chunk)
+        self._buffer.extend(chunk)
+        if len(self._buffer) > self.limit:
+            del self._buffer[:-self.limit]
+            self.truncated = True
+
+    def text(self) -> str:
+        return bytes(self._buffer).decode("utf-8", errors="replace")
+
+    def stats(self) -> dict[str, int | bool]:
+        return {
+            "total_bytes": self.total_bytes,
+            "retained_bytes": len(self._buffer),
+            "truncated": self.truncated,
+        }
+
+
+def _drain_worker_streams(
+    process: subprocess.Popen[bytes],
+    limit: int = DIAGNOSTIC_OUTPUT_LIMIT,
+) -> tuple[_BoundedStreamCapture, _BoundedStreamCapture, threading.Thread, threading.Thread]:
+    stdout = _BoundedStreamCapture(limit)
+    stderr = _BoundedStreamCapture(limit)
+
+    def drain(stream: Any, capture: _BoundedStreamCapture) -> None:
+        for chunk in iter(lambda: stream.read(65536), b""):
+            capture.append(chunk)
+
+    assert process.stdout is not None
+    assert process.stderr is not None
+    stdout_thread = threading.Thread(target=drain, args=(process.stdout, stdout), daemon=True)
+    stderr_thread = threading.Thread(target=drain, args=(process.stderr, stderr), daemon=True)
+    stdout_thread.start()
+    stderr_thread.start()
+    return stdout, stderr, stdout_thread, stderr_thread
+
+
 def _bounded_diagnostic(value: Any, limit: int = DIAGNOSTIC_OUTPUT_LIMIT) -> str:
     text = redact("" if value is None else str(value))
     if len(text) <= limit:
@@ -421,8 +468,6 @@ class Runner:
             "git_boundaries": [],
         }
         worker_failed = False
-        output_parts: list[str] = []
-        error_parts: list[str] = []
         def record_git_boundary(name: str) -> None:
             diagnostic["git_boundaries"].append({"boundary": name, "scoped_mutation": _scoped_git_snapshot(working_dir, task)})
         try:
@@ -440,24 +485,8 @@ class Runner:
                 env.update(profile_env)
             env["PATH"] = f"{working_dir / '.ack/tools'}:{env.get('PATH','')}"
             record_git_boundary("before_worker")
-            process = subprocess.Popen(command, cwd=working_dir, env=env, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            output_size = [0]
-            def drain() -> None:
-                assert process.stdout is not None
-                for chunk in iter(lambda: process.stdout.read(65536), ""):
-                    output_parts.append(chunk)
-                    output_size[0] += len(chunk)
-                    if output_size[0] > 1_000_000:
-                        process.terminate(); break
-            reader = threading.Thread(target=drain, daemon=True); reader.start()
-            def drain_errors() -> None:
-                assert process.stderr is not None
-                for chunk in iter(lambda: process.stderr.read(65536), ""):
-                    error_parts.append(chunk)
-                    if sum(map(len, error_parts)) > 1_000_000:
-                        process.terminate()
-                        break
-            error_reader = threading.Thread(target=drain_errors, daemon=True); error_reader.start()
+            process = subprocess.Popen(command, cwd=working_dir, env=env, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout_capture, stderr_capture, reader, error_reader = _drain_worker_streams(process)
             while process.poll() is None:
                 if stop.wait(1) and lost:
                     process.terminate()
@@ -467,17 +496,18 @@ class Runner:
             if process.returncode != 0:
                 diagnostic["failure_gate"] = "worker_exit"
                 error_reader.join(timeout=5)
-                detail = redact("".join(error_parts)).strip()[-1000:]
+                detail = redact(stderr_capture.text()).strip()[-1000:]
                 suffix = f": {detail}" if detail else ""
                 raise AckError(f"local agent exited {process.returncode}{suffix}")
             reader.join(timeout=5)
             error_reader.join(timeout=5)
             if reader.is_alive(): raise AckError("local agent result stream did not close")
             if error_reader.is_alive(): raise AckError("local agent diagnostic stream did not close")
-            output = "".join(output_parts)
+            output = stdout_capture.text()
             diagnostic["stdout"] = _bounded_diagnostic(output)
-            diagnostic["stderr"] = _bounded_diagnostic("".join(error_parts))
-            if len(output) > 1_000_000: raise AckError("local agent result exceeded 1 MB")
+            diagnostic["stderr"] = _bounded_diagnostic(stderr_capture.text())
+            diagnostic["stdout_stream"] = stdout_capture.stats()
+            diagnostic["stderr_stream"] = stderr_capture.stats()
             fenced = re.findall(r"```(?:json|yaml)?\s*\n(.*?)```", output, flags=re.DOTALL | re.IGNORECASE)
             if fenced: output = fenced[-1].strip() + "\n"
             try:
@@ -538,15 +568,21 @@ class Runner:
         finally:
             if diagnostic["worker_exit_code"] is None and 'process' in locals():
                 diagnostic["worker_exit_code"] = process.returncode
-            diagnostic["stdout"] = _bounded_diagnostic("".join(output_parts))
-            diagnostic["stderr"] = _bounded_diagnostic("".join(error_parts))
+            if "reader" in locals(): reader.join(timeout=5)
+            if "error_reader" in locals(): error_reader.join(timeout=5)
+            if "stdout_capture" in locals():
+                diagnostic["stdout"] = _bounded_diagnostic(stdout_capture.text())
+                diagnostic["stdout_stream"] = stdout_capture.stats()
+            if "stderr_capture" in locals():
+                diagnostic["stderr"] = _bounded_diagnostic(stderr_capture.text())
+                diagnostic["stderr_stream"] = stderr_capture.stats()
             if worker_failed:
                 try:
                     diagnostic["session_preservation"] = _preserve_failure_session(
                         runtime_home,
                         diagnostic_path,
-                        "".join(output_parts),
-                        "".join(error_parts),
+                        stdout_capture.text() if "stdout_capture" in locals() else "",
+                        stderr_capture.text() if "stderr_capture" in locals() else "",
                     )
                 except Exception:
                     pass

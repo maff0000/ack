@@ -13,6 +13,9 @@ objective: ""
 
 scope: []
 must_not: []
+# Required actions/outcomes. Workers must satisfy these; ACK verifies them.
+# For write tasks, the control-plane outcome is exactly one ACK-created commit
+# above base_commit after the worker leaves valid scoped changes.
 acceptance: []
 dependencies: []
 

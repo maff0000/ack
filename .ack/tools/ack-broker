@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import argparse
+import sys
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "lib"))
+
+from ack.broker import serve_broker
+from ack.redact import redact
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run the project-scoped ACK host broker")
+    parser.add_argument("--project-root", required=True)
+    parser.add_argument("--socket", required=True)
+    parser.add_argument("--owner-nonce", required=True)
+    args = parser.parse_args()
+    try:
+        serve_broker(Path(args.project_root), Path(args.socket), args.owner_nonce)
+        return 0
+    except Exception as exc:
+        print(f"ACK BROKER ERROR: {redact(exc)}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

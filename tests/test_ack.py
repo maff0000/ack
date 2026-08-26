@@ -17,11 +17,20 @@ from ack.contracts import validate_result, validate_task
 from ack.config import load_config
 from ack.control import ControlPlane, STATUS_FIELDS
 from ack.errors import AckError
-from ack.git import allocate_worker_repo, verify_worker_repo
+from ack.git import allocate_worker_repo, integrate_worker_commit, verify_worker_repo
 from ack.paths import resolve_inside, root_from_pid, validate_root
 from ack.skills import compose_skills
 from ack.time import utc_text, utc_now
 from tests.fakes import FakeRedis
+
+
+def bubblewrap_usable():
+    if not shutil.which("bwrap"):
+        return False
+    return subprocess.run(
+        ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc", "true"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+    ).returncode == 0
 
 
 def task(root, kind="read", mutation=False):
@@ -47,7 +56,7 @@ class BoundaryTests(unittest.TestCase):
         (self.root/"PID.md").write_text(f"PROJECT_ROOT: `{self.root}`\n")
         self.assertEqual(root_from_pid(self.root/"PID.md"), self.root.resolve())
     def test_canonical_pid_root(self): self.assertEqual(root_from_pid(ROOT/"PID.md"), ROOT.resolve())
-    @unittest.skipUnless(shutil.which("bwrap"), "bubblewrap not installed")
+    @unittest.skipUnless(bubblewrap_usable(), "bubblewrap namespaces unavailable")
     def test_process_sandbox_enforces_read_and_project_write(self):
         sibling = ROOT.parent / "battleships"
         read = subprocess.run(["bwrap","--ro-bind","/","/","--dev","/dev","--proc","/proc","--tmpfs","/tmp","--chdir",str(ROOT),"sh","-c",f"test ! -w {ROOT} && test ! -w {sibling}"],check=False)
@@ -134,19 +143,227 @@ class SkillTests(unittest.TestCase):
 class GitIsolationTests(unittest.TestCase):
     def test_allocator_uses_independent_objects_and_provenance(self):
         with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp)/"project"; root.mkdir(); (root/".ack/tasks/active").mkdir(parents=True)
-            (root/"PID.md").write_text(f"PROJECT_ROOT: {root}\n"); (root/"file.txt").write_text("base\n")
-            subprocess.run(["git","init","-b","main",str(root)],check=True,capture_output=True)
-            subprocess.run(["git","-C",str(root),"add","."],check=True)
-            subprocess.run(["git","-C",str(root),"-c","user.name=Axiom","-c","user.email=axiom@local","commit","-m","base"],check=True,capture_output=True)
-            base=subprocess.run(["git","-C",str(root),"rev-parse","HEAD"],check=True,text=True,capture_output=True).stdout.strip()
-            data=task(root,"write",True); data["base_commit"]=base; data["worktree"]=str(root/".ack/worktrees/AX-001")
-            task_path=root/".ack/tasks/active/AX-001.yaml"; task_path.write_text(yaml.safe_dump(data,sort_keys=False))
-            worker=allocate_worker_repo(task_path); verify_worker_repo(root,worker,data)
-            canonical={(p.relative_to(root/".git/objects")):(p.stat().st_dev,p.stat().st_ino) for p in (root/".git/objects").rglob("*") if p.is_file()}
-            for path in (worker/".git/objects").rglob("*"):
-                if path.is_file() and path.relative_to(worker/".git/objects") in canonical:
-                    self.assertNotEqual((path.stat().st_dev,path.stat().st_ino),canonical[path.relative_to(worker/".git/objects")])
+
+            root = Path(temp) / "project"
+            root.mkdir()
+            (root / ".ack/tasks/active").mkdir(parents=True)
+
+            (root / "PID.md").write_text(f"PROJECT_ROOT: {root}\n")
+            (root / "file.txt").write_text("base\n")
+
+            subprocess.run(
+                ["git", "init", "-b", "main", str(root)],
+                check=True,
+                capture_output=True,
+            )
+
+            subprocess.run(
+                ["git", "-C", str(root), "add", "."],
+                check=True,
+            )
+
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "-c",
+                    "user.name=Axiom",
+                    "-c",
+                    "user.email=axiom@local",
+                    "commit",
+                    "-m",
+                    "base",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            base = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+
+            data = task(root, "write", True)
+            data["base_commit"] = base
+            data["worktree"] = str(root / ".ack/worktrees/AX-001")
+
+            task_path = root / ".ack/tasks/active/AX-001.yaml"
+            task_path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+            worker = allocate_worker_repo(task_path)
+            verify_worker_repo(root, worker, data)
+
+            canonical = {
+                p.relative_to(root / ".git/objects"): (
+                    p.stat().st_dev,
+                    p.stat().st_ino,
+                )
+                for p in (root / ".git/objects").rglob("*")
+                if p.is_file()
+            }
+
+            for path in (worker / ".git/objects").rglob("*"):
+
+                if (
+                    path.is_file()
+                    and path.relative_to(worker / ".git/objects") in canonical
+                ):
+                    self.assertNotEqual(
+                        (path.stat().st_dev, path.stat().st_ino),
+                        canonical[path.relative_to(worker / ".git/objects")],
+                    )
+
+    def test_integrates_valid_completed_worker_commit(self):
+
+        with tempfile.TemporaryDirectory() as temp:
+
+            root = Path(temp) / "project"
+            root.mkdir()
+
+            (root / ".ack/tasks/active").mkdir(parents=True)
+            (root / ".ack/results").mkdir(parents=True)
+
+            (root / "PID.md").write_text(f"PROJECT_ROOT: {root}\n")
+            (root / "file.txt").write_text("base\n")
+
+            subprocess.run(
+                ["git", "init", "-b", "main", str(root)],
+                check=True,
+                capture_output=True,
+            )
+
+            subprocess.run(
+                ["git", "-C", str(root), "add", "."],
+                check=True,
+            )
+
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "-c",
+                    "user.name=Axiom",
+                    "-c",
+                    "user.email=axiom@local",
+                    "commit",
+                    "-m",
+                    "base",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            base = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+
+            data = task(root, "write", True)
+            data["role"] = "builder"
+            data["base_commit"] = base
+            data["worktree"] = str(root / ".ack/worktrees/AX-001")
+            data["scope"] = ["file.txt"]
+            data["status"] = "completed"
+
+            task_path = root / ".ack/tasks/active/AX-001.yaml"
+            task_path.write_text(
+                yaml.safe_dump(data, sort_keys=False)
+            )
+
+            worker = allocate_worker_repo(task_path)
+
+            (worker / "file.txt").write_text("base\nworker\n")
+
+            subprocess.run(
+                ["git", "-C", str(worker), "add", "file.txt"],
+                check=True,
+            )
+
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(worker),
+                    "-c",
+                    "user.name=ACK Worker",
+                    "-c",
+                    "user.email=ack-worker@localhost",
+                    "commit",
+                    "-m",
+                    "AX-001: worker output",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            worker_commit = subprocess.run(
+                ["git", "-C", str(worker), "rev-parse", "HEAD"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+
+            result_data = result(root)
+            result_data["changed"] = ["file.txt"]
+            result_data["commit"] = worker_commit
+
+            (worker / ".ack/results").mkdir(parents=True)
+            (worker / ".ack/results/AX-001.yaml").write_text(
+                yaml.safe_dump(result_data, sort_keys=False)
+            )
+
+            with self.assertRaisesRegex(AckError, "canonical HEAD moved"):
+                integrate_worker_commit(task_path, "0" * 40)
+
+            marker_path = worker / ".git/ack-provenance.json"
+            marker = marker_path.read_text()
+            marker_path.write_text("{}\n")
+            with self.assertRaisesRegex(AckError, "provenance"):
+                integrate_worker_commit(task_path, base)
+            marker_path.write_text(marker)
+
+            result_data["changed"] = ["other.txt"]
+            (worker / ".ack/results/AX-001.yaml").write_text(yaml.safe_dump(result_data, sort_keys=False))
+            with self.assertRaisesRegex(AckError, "changed paths"):
+                integrate_worker_commit(task_path, base)
+            result_data["changed"] = ["file.txt"]
+            (worker / ".ack/results/AX-001.yaml").write_text(yaml.safe_dump(result_data, sort_keys=False))
+
+            data["scope"] = []
+            task_path.write_text(yaml.safe_dump(data, sort_keys=False))
+            with self.assertRaisesRegex(AckError, "outside task scope"):
+                integrate_worker_commit(task_path, base)
+            data["scope"] = ["file.txt"]
+            task_path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+            returned_worker, integrated = integrate_worker_commit(
+                task_path,
+                base,
+            )
+
+            self.assertEqual(returned_worker, worker_commit)
+
+            canonical_head = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+
+            self.assertEqual(integrated, canonical_head)
+            self.assertNotEqual(integrated, base)
+
+            self.assertEqual(
+                (root / "file.txt").read_text(),
+                "base\nworker\n",
+            )
 
 
-if __name__ == "__main__": unittest.main()
+if __name__ == "__main__":
+    unittest.main()

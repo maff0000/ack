@@ -8,6 +8,7 @@ from typing import Any
 import yaml
 
 from .errors import AckError
+from .redact import redact
 
 
 @dataclass(frozen=True)
@@ -20,17 +21,18 @@ class Config:
     max_parallel_agents: int = 4
     agent_command: tuple[str, ...] = ()
     sandbox_executable: str = "bwrap"
-    agent_env_allowlist: tuple[str, ...] = ("PATH", "HOME", "CODEX_HOME", "LANG", "LC_ALL", "TERM", "SSL_CERT_FILE", "SSL_CERT_DIR")
+    agent_env_allowlist: tuple[str, ...] = ("PATH", "HOME", "LANG", "LC_ALL", "TERM", "SSL_CERT_FILE", "SSL_CERT_DIR")
 
 
-def load_config(path: str | Path | None = None) -> Config:
+def load_config(path: str | Path | None = None, *, require_redis: bool = True) -> Config:
     config_path = Path(path or os.environ.get("ACK_CONFIG", ".ack/config.yaml"))
     try:
         raw: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     except (OSError, yaml.YAMLError) as exc:
-        raise AckError(f"cannot load ACK config {config_path}: {exc}") from exc
+        raise AckError(f"cannot load ACK config {redact(config_path)}: {redact(exc)}") from exc
     redis_url = os.environ.get("ACK_REDIS_URL") or raw.get("redis_url")
-    if not redis_url or (isinstance(redis_url, str) and redis_url.startswith("${")):
+    unresolved_redis = not redis_url or (isinstance(redis_url, str) and redis_url.startswith("${"))
+    if require_redis and unresolved_redis:
         raise AckError("ACK_REDIS_URL or config redis_url is required")
     command = raw.get("agent_command", [])
     if command and (not isinstance(command, list) or not all(isinstance(v, str) for v in command)):
@@ -59,7 +61,7 @@ def load_config(path: str | Path | None = None) -> Config:
             raise AckError(f"{name} must be positive")
         return value
     return Config(
-        redis_url=str(redis_url), heartbeat_seconds=number("heartbeat_seconds", 20),
+        redis_url="" if unresolved_redis else str(redis_url), heartbeat_seconds=number("heartbeat_seconds", 20),
         lease_seconds=number("lease_seconds", 60), degraded_seconds=number("degraded_seconds", 45),
         stale_seconds=number("stale_seconds", 90), max_parallel_agents=number("max_parallel_agents", 4),
         agent_command=tuple(command), sandbox_executable=sandbox_path, agent_env_allowlist=tuple(env_allowlist),

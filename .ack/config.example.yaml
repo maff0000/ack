@@ -10,10 +10,11 @@ max_parallel_agents: 4
 sandbox_executable: bwrap
 
 # Add only the provider/authentication variables deliberately required locally.
+# ACK_WORKER_CODEX_HOME identifies the project-local provider template externally;
+# workers receive only a disposable copy through their own CODEX_HOME.
 agent_env_allowlist:
   - PATH
   - HOME
-  - CODEX_HOME
   - LANG
   - LC_ALL
   - TERM
@@ -23,6 +24,7 @@ agent_env_allowlist:
   - ACK_API_KEY
 
 # argv only; ACK never invokes this through a shell. Placeholders are substituted.
+# Codex runs with danger-full-access only inside ACK's authoritative outer bwrap.
 # Configure Codex/LiteLLM authentication and provider routing outside ACK.
 agent_command:
   - codex
@@ -33,6 +35,4 @@ agent_command:
   - "{model}"
   - --sandbox
   - "{sandbox_mode}"
-  - --output-schema
-  - "{result_schema}"
   - "Read the supplied context, perform only the assigned task, report meaningful progress with ack-agent, and return only the required YAML result."

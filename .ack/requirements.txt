@@ -1,0 +1,3 @@
+PyYAML>=6,<7
+redis>=5,<7
+# The ACK PL MCP bridge deliberately uses the Python standard library only.

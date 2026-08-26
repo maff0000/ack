@@ -1,0 +1,9 @@
+# Copy to .ack/runtime.yaml with mode 0600, or set ACK_RUNTIME_CONFIG to an
+# absolute external YAML path. This file contains no host values or secrets.
+environment:
+  ACK_REDIS_URL: redis://host.example.invalid:6379/0
+  ACK_WORKER_CODEX_HOME: /absolute/path/to/project-local/worker-template
+  ACK_LITELLM_URL: http://gateway.example.invalid:4000
+  ACK_API_KEY:
+    source: /absolute/path/to/host-owned/secrets.env
+    key: PROVIDER_MASTER_KEY

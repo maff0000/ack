@@ -15,6 +15,7 @@ from ack.errors import AckError
 from ack.git import allocate_worker_repo
 from ack.paths import root_from_pid
 from ack.runner import Runner
+from ack.redact import redact
 
 
 def control_from_env(config):
@@ -57,7 +58,7 @@ def main() -> int:
         else: control.heartbeat(task, agent, token, config.lease_seconds)
         return 0
     except Exception as exc:
-        print(f"ACK ERROR: {exc}", file=sys.stderr)
+        print(f"ACK ERROR: {redact(exc)}", file=sys.stderr)
         return 1
 
 

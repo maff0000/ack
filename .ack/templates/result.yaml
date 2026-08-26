@@ -5,7 +5,7 @@ status: completed  # completed | blocked | failed; never accepted/rejected
 summary: ""
 
 changed: []
-commit: ""
+commit: ""  # workers leave empty; ACK derives the controller-created commit from Git truth
 
 tests:
   commands: []

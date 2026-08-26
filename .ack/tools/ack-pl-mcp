@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import sys
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "lib"))
+
+from ack.mcp_server import serve
+from ack.redact import redact
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(serve())
+    except Exception as exc:
+        print(f"ACK PL MCP ERROR: {redact(exc)}", file=sys.stderr)
+        raise SystemExit(1)

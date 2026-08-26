@@ -1,4 +1,6 @@
 .ack/config.yaml
+.ack/runtime.yaml
+.ack/runtime-host/
 .ack/worktrees/
 __pycache__/
 *.py[cod]

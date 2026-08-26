@@ -2,7 +2,7 @@
 
 1. Work only inside the assigned PID-defined `PROJECT_ROOT`; canonicalise paths and reject traversal or symlink escapes.
 2. Work only within the assigned task scope and inspect the existing implementation before changing it.
-3. Git is durable truth; create focused, meaningful work and never merge into the canonical branch.
+3. Git is durable truth. Workers make focused scoped filesystem changes but never commit or merge; ACK Runner/controller alone creates the task-scoped worker-output commit after mechanical validation.
 4. Configuration does not belong in application source. Supply runtime/environment configuration externally and fail loudly when required configuration is missing.
 5. Never store secrets in source, commits, results, logs, examples, Redis, prompts, or evidence.
 6. Repeated work uses reusable, parameterised components rather than per-instance copies.
@@ -17,6 +17,6 @@
 15. Fail loudly on missing dependencies/configuration, invalid authority, or incompatible assumptions.
 16. Running services have meaningful names, visible startup/shutdown/failure events, UTC structured logs where practical, bounded retention, and no silent failures or sensitive dumps; container logs normally use stdout/stderr.
 17. Never spawn another agent.
-18. Return concise structured results. Worker completion means only that the bounded task finished.
+18. Return concise structured results. Acceptance criteria are required actions and outcomes, not facts to repeat. Worker `completed` means the bounded task was actually executed, including required mutation and testing.
 19. Only Axiom may ACCEPT or REJECT project work; workers use only `completed`, `blocked`, or `failed`.
 20. If required work crosses `PROJECT_ROOT`, stop and report `blocked`.

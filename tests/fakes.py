@@ -46,6 +46,10 @@ class FakeRedis:
         if "ACK_PROGRESS" in script:
             self.hset(keys[1],{"status":"working","phase":args[1],"current_action":args[2],"progress_at_utc":args[3]})
             self.hset(keys[2],{"status":"working"}); self.xadd(keys[3],{"project":args[4],"task":args[5],"agent_instance":args[6],"event":"phase_changed","utc":args[3],"summary":args[7]}); return 1
+        if "ACK_GUARD" in script:
+            self.hset(keys[1],{"health":args[1],"stop_reason":args[2],"current_action":args[3],"usage_tokens":args[4],"usage_cost_usd":args[5]})
+            self.hset(keys[2],{"health":args[1],"stop_reason":args[2],"usage_tokens":args[4],"usage_cost_usd":args[5]})
+            self.xadd(keys[3],{"project":args[6],"task":args[7],"agent_instance":args[8],"event":"worker_guard","utc":args[9],"summary":args[10]}); return 1
         if "ACK_FINISH" in script:
             self.hset(keys[1],{"status":args[1],"phase":args[2],"heartbeat_at_utc":args[3],"progress_at_utc":args[3],"current_action":args[4],"result":args[5],"commit":args[6],"error":args[7]})
             self.hset(keys[2],{"status":args[1],"result":args[5],"commit":args[6],"error":args[7]})

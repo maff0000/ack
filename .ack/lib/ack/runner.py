@@ -5,6 +5,7 @@ import subprocess
 import threading
 import secrets
 import shutil
+import time
 from datetime import datetime, timezone
 import re
 from typing import Any
@@ -21,6 +22,7 @@ from .git import verify_worker_repo
 from .paths import resolve_inside, root_from_pid
 from .skills import compose_skills
 from .redact import redact
+from .time import parse_utc
 
 
 EXECUTION_TASK_FIELDS = (
@@ -31,6 +33,53 @@ EXECUTION_TASK_FIELDS = (
 
 DIAGNOSTIC_OUTPUT_LIMIT = 16_384
 SESSION_TRACE_LIMIT = 1_048_576
+
+
+def worker_guard_classification(
+    *,
+    elapsed_seconds: float,
+    progress_age_seconds: float,
+    no_progress_seconds: int,
+    max_worker_seconds: int,
+    usage_tokens: int = 0,
+    max_worker_tokens: int = 0,
+    usage_cost_usd: float | None = None,
+    max_worker_cost_usd: float = 0.0,
+    usage_increasing: bool = False,
+    material_evidence: bool = False,
+) -> dict[str, Any]:
+    """Classify guard state without inferring anything about model internals."""
+    if max_worker_tokens and usage_tokens >= max_worker_tokens:
+        return {"classification": "resource_ceiling", "stop": True, "reason": f"token budget reached ({usage_tokens})"}
+    if usage_cost_usd is not None and max_worker_cost_usd and usage_cost_usd >= max_worker_cost_usd:
+        return {"classification": "resource_ceiling", "stop": True, "reason": f"cost budget reached (${usage_cost_usd:.2f})"}
+    if elapsed_seconds >= max_worker_seconds:
+        return {"classification": "wall_time_ceiling", "stop": True, "reason": f"worker wall time reached ({int(elapsed_seconds)}s)"}
+    if progress_age_seconds >= no_progress_seconds:
+        classification = "probable_nonproductive_execution" if usage_increasing and not material_evidence else "alive_but_stalled"
+        return {"classification": classification, "stop": False, "reason": f"governed progress stale for {int(progress_age_seconds)}s"}
+    return {"classification": "progressing", "stop": False, "reason": "governed progress is fresh"}
+
+
+def _usage_snapshot(runtime_home: Path) -> tuple[int, float | None]:
+    """Read already-emitted session usage metadata; absence is acceptable."""
+    tokens = 0
+    cost: float | None = None
+    for path in runtime_home.glob("sessions/**/*.jsonl"):
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
+        except OSError:
+            continue
+        for line in lines:
+            try: record = json.loads(line)
+            except json.JSONDecodeError: continue
+            info = record.get("payload", {}).get("info", {}) if isinstance(record, dict) else {}
+            usage = info.get("total_token_usage", {}) if isinstance(info, dict) else {}
+            if isinstance(usage, dict): tokens = max(tokens, int(usage.get("total_tokens") or 0))
+            for key in ("cost_usd", "total_cost_usd", "cost"):
+                value = usage.get(key) if isinstance(usage, dict) else None
+                if isinstance(value, (int, float)): cost = max(cost or 0.0, float(value))
+    return tokens, cost
 
 
 class _BoundedStreamCapture:
@@ -445,9 +494,45 @@ class Runner:
             raise
         stop = threading.Event()
         lost: list[Exception] = []
+        guard_stop: list[str] = []
+        guard_last: list[str] = []
+        guard_started = time.monotonic()
+        guard_usage_tokens = 0
+        no_progress_limit = int(task.get("no_progress_seconds", self.config.no_progress_seconds))
+        wall_limit = int(task.get("max_worker_seconds", self.config.max_worker_seconds))
+        token_limit = int(task.get("max_worker_tokens", self.config.max_worker_tokens))
+        cost_limit = float(task.get("max_worker_cost_usd", self.config.max_worker_cost_usd))
         def pulse() -> None:
+            nonlocal guard_usage_tokens
             while not stop.wait(self.config.heartbeat_seconds):
                 try:
+                    record = client.hgetall(control.agent_key(agent))
+                    progress_value = record.get("progress_at_utc")
+                    progress_age = (datetime.now(timezone.utc) - parse_utc(progress_value)).total_seconds() if progress_value else float("inf")
+                    usage_tokens, usage_cost = _usage_snapshot(runtime_home)
+                    usage_increasing = usage_tokens > guard_usage_tokens
+                    guard_usage_tokens = max(guard_usage_tokens, usage_tokens)
+                    guard = worker_guard_classification(
+                        elapsed_seconds=time.monotonic() - guard_started,
+                        progress_age_seconds=progress_age,
+                        no_progress_seconds=no_progress_limit,
+                        max_worker_seconds=wall_limit,
+                        usage_tokens=usage_tokens,
+                        max_worker_tokens=token_limit,
+                        usage_cost_usd=usage_cost,
+                        max_worker_cost_usd=cost_limit,
+                        usage_increasing=usage_increasing,
+                        material_evidence=_scoped_git_snapshot(working_dir, task) is True or result_file.is_file(),
+                    )
+                    classification = str(guard["classification"])
+                    if classification != "progressing" and classification != (guard_last[0] if guard_last else ""):
+                        reason = str(guard["reason"])
+                        control.guard(task["id"], agent, token, classification, reason, usage_tokens=usage_tokens, usage_cost_usd=usage_cost)
+                        guard_last[:] = [classification]
+                    if guard["stop"]:
+                        guard_stop[:] = [f"{classification}: {guard['reason']}"]
+                        stop.set()
+                        break
                     control.heartbeat(task["id"], agent, token, self.config.lease_seconds)
                     control.renew_slot(token, slot, self.config.lease_seconds)
                 except Exception as exc:
@@ -497,6 +582,11 @@ class Runner:
                 if stop.wait(1) and lost:
                     process.terminate()
                     raise AckError(f"worker lease lost: {redact(lost[0])}")
+                if stop.is_set() and guard_stop:
+                    process.terminate()
+                    raise AckError(f"worker guard stopped delivery: {guard_stop[0]}")
+            if guard_stop:
+                raise AckError(f"worker guard stopped delivery: {guard_stop[0]}")
             diagnostic["worker_exit_code"] = process.returncode
             record_git_boundary("after_worker_exit")
             if process.returncode != 0:
@@ -568,7 +658,8 @@ class Runner:
             if diagnostic["failure_gate"] is None:
                 diagnostic["failure_gate"] = "runner"
             record_git_boundary("failure")
-            try: control.finish(task["id"], agent, token, "failed", error=f"{type(exc).__name__}: worker failed; inspect local logs")
+            detail = str(exc)
+            try: control.finish(task["id"], agent, token, "failed", error=f"{type(exc).__name__}: {detail}")
             except Exception: pass
             raise
         finally:

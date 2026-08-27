@@ -63,6 +63,13 @@ def validate_task(task: dict[str, Any], pid_root: str | Path) -> dict[str, Any]:
     if task["risk"] not in {"low", "normal", "material", "security", "architecture"}:
         raise AckError("task risk is invalid")
     root = validate_root(task["project_root"], pid_root)
+    for field in ("no_progress_seconds", "max_worker_seconds"):
+        if field in task and (not isinstance(task[field], int) or task[field] <= 0):
+            raise AckError(f"task {field} must be a positive integer")
+    if "max_worker_tokens" in task and (not isinstance(task["max_worker_tokens"], int) or task["max_worker_tokens"] < 0):
+        raise AckError("task max_worker_tokens must not be negative")
+    if "max_worker_cost_usd" in task and (not isinstance(task["max_worker_cost_usd"], (int, float)) or task["max_worker_cost_usd"] < 0):
+        raise AckError("task max_worker_cost_usd must not be negative")
     authority = task["authority"]
     if not isinstance(authority, dict):
         raise AckError("task authority must be a mapping")

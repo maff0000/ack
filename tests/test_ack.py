@@ -159,6 +159,14 @@ class ControlTests(unittest.TestCase):
     def test_expired_lease(self): self.cp.acquire_lease("T","token-A",1); self.redis.expiry[self.cp.lease_key("T")]=time.time()-1; self.assertTrue(self.cp.acquire_lease("T","token-B",2)); self.assertEqual(self.redis.get(self.cp.lease_key("T")),"token-B")
     def test_heartbeat_updates(self): self.cp.start(self.task,"A",self.token,10); before=self.redis.hgetall(self.cp.agent_key("A"))["heartbeat_at_utc"]; self.cp.heartbeat("AX-001","A",self.token,10); self.assertGreaterEqual(self.redis.hgetall(self.cp.agent_key("A"))["heartbeat_at_utc"],before)
     def test_progress_updates(self): self.cp.start(self.task,"A",self.token,10); self.cp.progress("AX-001","A",self.token,"tests","running"); row=self.redis.hgetall(self.cp.agent_key("A")); self.assertEqual((row["phase"],row["current_action"]),("tests","running"))
+    def test_guard_state_does_not_advance_progress(self):
+        self.cp.start(self.task,"A",self.token,10)
+        before=self.redis.hgetall(self.cp.agent_key("A"))["progress_at_utc"]
+        self.cp.guard("AX-001","A",self.token,"alive_but_stalled","governed progress stale for 601s",usage_tokens=12)
+        row=self.redis.hgetall(self.cp.agent_key("A"))
+        self.assertEqual(row["health"],"alive_but_stalled")
+        self.assertEqual(row["progress_at_utc"],before)
+        self.assertEqual(self.redis.streams[self.cp.events_key][-1][1]["event"],"worker_guard")
     def _event(self,status,expected): self.cp.start(self.task,"A",self.token,10); self.cp.finish("AX-001","A",self.token,status); self.assertEqual(self.redis.streams[self.cp.events_key][-1][1]["event"],expected)
     def test_completion_event(self): self._event("completed","task_completed")
     def test_failure_event(self): self._event("failed","task_failed")

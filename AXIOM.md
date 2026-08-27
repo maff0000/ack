@@ -32,6 +32,8 @@ Delegate bounded work to local LiteLLM-backed agents. Compose only the necessary
 
 Every worker receives an explicit, canonical `PROJECT_ROOT` and may never mutate outside it. Workers cannot broaden scope, spawn workers, merge canonical work, or accept their own output. Axiom inspects results and diffs, applies risk-proportional independent assurance, integrates deliberately, and alone records `accepted` or `rejected`.
 
+Liveness is not progress. ACK must surface `alive_but_stalled` when heartbeats remain fresh but governed progress is stale, and must stop or escalate at configured wall-time or available inference/resource ceilings. Preserve the worktree and evidence; never silently renew indefinitely or redispatch.
+
 Use meaningful commits, isolated write worktrees where appropriate, external runtime configuration, UTC timestamps, clear failures, and concise state. Escalate only when the architectural box or material risk decision must move.
 
 Before escalating a filesystem, Git, runtime, or permission blocker, perform the smallest safe direct capability probe. If it succeeds, continue. If it fails, report the observed operation and redacted error; do not infer blockers from generic sandbox wording.

@@ -9,7 +9,8 @@ from .time import parse_utc, utc_now, utc_text
 STATUS_FIELDS = {
     "project", "task", "agent_instance", "role", "model", "status", "phase",
     "started_at_utc", "heartbeat_at_utc", "progress_at_utc", "current_action",
-    "base_commit", "worktree", "result", "commit", "error",
+    "base_commit", "worktree", "result", "commit", "error", "health",
+    "stop_reason", "usage_tokens", "usage_cost_usd",
 }
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
@@ -22,7 +23,7 @@ return 1
 START_SCRIPT = """-- ACK_START
 if redis.call('EXISTS', KEYS[1]) == 1 then return 0 end
 redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
-redis.call('HSET', KEYS[2], 'project',ARGV[3],'task',ARGV[4],'agent_instance',ARGV[5],'role',ARGV[6],'model',ARGV[7],'status','starting','phase','startup','started_at_utc',ARGV[8],'heartbeat_at_utc',ARGV[8],'progress_at_utc',ARGV[8],'current_action','loading task context','base_commit',ARGV[9],'worktree',ARGV[10],'result','','commit','','error','')
+redis.call('HSET', KEYS[2], 'project',ARGV[3],'task',ARGV[4],'agent_instance',ARGV[5],'role',ARGV[6],'model',ARGV[7],'status','starting','phase','startup','started_at_utc',ARGV[8],'heartbeat_at_utc',ARGV[8],'progress_at_utc',ARGV[8],'current_action','loading task context','base_commit',ARGV[9],'worktree',ARGV[10],'result','','commit','','error','','health','progressing','stop_reason','','usage_tokens','0','usage_cost_usd','')
 redis.call('HSET', KEYS[3], 'status','starting','agent_instance',ARGV[5],'lease_owner',ARGV[5],'lease_until_utc',ARGV[11])
 redis.call('XADD', KEYS[4], '*', 'project',ARGV[3], 'task',ARGV[4], 'agent_instance',ARGV[5], 'event','task_started', 'utc',ARGV[8])
 return 1
@@ -45,6 +46,13 @@ return 1
 SLOT_SCRIPT = """-- ACK_SLOT
 if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
 if ARGV[2] == 'release' then redis.call('DEL', KEYS[1]) else redis.call('EXPIRE', KEYS[1], ARGV[2]) end
+return 1
+"""
+GUARD_SCRIPT = """-- ACK_GUARD
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+redis.call('HSET', KEYS[2], 'health', ARGV[2], 'stop_reason', ARGV[3], 'current_action', ARGV[4], 'usage_tokens', ARGV[5], 'usage_cost_usd', ARGV[6])
+redis.call('HSET', KEYS[3], 'health', ARGV[2], 'stop_reason', ARGV[3], 'usage_tokens', ARGV[5], 'usage_cost_usd', ARGV[6])
+redis.call('XADD', KEYS[4], '*', 'project', ARGV[7], 'task', ARGV[8], 'agent_instance', ARGV[9], 'event', 'worker_guard', 'utc', ARGV[10], 'summary', ARGV[11])
 return 1
 """
 
@@ -132,6 +140,16 @@ class ControlPlane:
         clean = self._clean({"result": result, "commit": commit, "error": error})
         ok = self.redis.eval(FINISH_SCRIPT, 4, self.lease_key(task), self.agent_key(agent), self.task_key(task), self.events_key, token, status, "done" if status == "completed" else status, now, event, clean["result"], clean["commit"], clean["error"], self.project, task, agent)
         if not ok: raise AckError("expired/zombie worker cannot publish authoritative result")
+
+    def guard(self, task: str, agent: str, token: str, classification: str, reason: str, *, usage_tokens: int = 0, usage_cost_usd: float | None = None) -> None:
+        self._validate_id(task, "task id"); self._validate_id(agent, "agent_instance")
+        classification = self._concise(classification, 80)
+        reason = self._concise(reason, 240)
+        tokens = str(max(0, int(usage_tokens)))
+        cost = "" if usage_cost_usd is None else f"{usage_cost_usd:.6f}"
+        summary = self._concise(f"{classification}: {reason}", 240)
+        ok = self.redis.eval(GUARD_SCRIPT, 4, self.lease_key(task), self.task_key(task), self.agent_key(agent), self.events_key, token, classification, reason, summary, tokens, cost, self.project, task, agent, utc_text(), summary)
+        if not ok: raise AckError("expired/zombie worker cannot publish guard state")
 
     def event(self, task: str, agent: str, event: str, **extra: Any) -> str:
         self._validate_id(task,"task id"); self._validate_id(agent,"agent_instance")

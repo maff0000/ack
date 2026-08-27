@@ -5,6 +5,10 @@ lease_seconds: 60
 degraded_seconds: 45
 stale_seconds: 90
 max_parallel_agents: 4
+no_progress_seconds: 600
+max_worker_seconds: 1800
+max_worker_tokens: 0
+max_worker_cost_usd: 1.0
 
 # ACK constructs and validates the confinement arguments; only the executable is configurable.
 sandbox_executable: bwrap

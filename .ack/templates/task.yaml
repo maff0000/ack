@@ -21,6 +21,12 @@ dependencies: []
 
 risk: low
 
+# Optional delivery-specific guard overrides; project config defaults apply when omitted.
+# no_progress_seconds: 600
+# max_worker_seconds: 1800
+# max_worker_tokens: 0
+# max_worker_cost_usd: 1.0
+
 authority:
   mutation_allowed: false
   runtime_mutation_allowed: false

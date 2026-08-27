@@ -19,6 +19,10 @@ class Config:
     degraded_seconds: int = 45
     stale_seconds: int = 90
     max_parallel_agents: int = 4
+    no_progress_seconds: int = 600
+    max_worker_seconds: int = 1800
+    max_worker_tokens: int = 0
+    max_worker_cost_usd: float = 1.0
     agent_command: tuple[str, ...] = ()
     sandbox_executable: str = "bwrap"
     agent_env_allowlist: tuple[str, ...] = ("PATH", "HOME", "LANG", "LC_ALL", "TERM", "SSL_CERT_FILE", "SSL_CERT_DIR")
@@ -60,9 +64,20 @@ def load_config(path: str | Path | None = None, *, require_redis: bool = True) -
         if value <= 0:
             raise AckError(f"{name} must be positive")
         return value
+    def nonnegative_float(name: str, default: float) -> float:
+        value = float(os.environ.get(f"ACK_{name.upper()}", raw.get(name, default)))
+        if value < 0:
+            raise AckError(f"{name} must not be negative")
+        return value
+    max_tokens = int(os.environ.get("ACK_MAX_WORKER_TOKENS", raw.get("max_worker_tokens", 0)))
+    if max_tokens < 0:
+        raise AckError("max_worker_tokens must not be negative")
     return Config(
         redis_url="" if unresolved_redis else str(redis_url), heartbeat_seconds=number("heartbeat_seconds", 20),
         lease_seconds=number("lease_seconds", 60), degraded_seconds=number("degraded_seconds", 45),
         stale_seconds=number("stale_seconds", 90), max_parallel_agents=number("max_parallel_agents", 4),
+        no_progress_seconds=number("no_progress_seconds", 600), max_worker_seconds=number("max_worker_seconds", 1800),
+        max_worker_tokens=max_tokens,
+        max_worker_cost_usd=nonnegative_float("max_worker_cost_usd", 1.0),
         agent_command=tuple(command), sandbox_executable=sandbox_path, agent_env_allowlist=tuple(env_allowlist),
     )

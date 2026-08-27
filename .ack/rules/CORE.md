@@ -21,6 +21,7 @@
 19. Only Axiom may ACCEPT or REJECT project work; workers use only `completed`, `blocked`, or `failed`.
 20. If required work crosses `PROJECT_ROOT`, stop and report `blocked`.
 21. Use the ACK-prepared project dependency environment. Do not create virtual environments or install project dependencies inside a worker worktree.
+22. Liveness is not progress. ACK bounds worker execution by progress freshness, wall-clock duration, and available inference/resource budgets; stale progress is surfaced as `alive_but_stalled`, while a ceiling stops/escalates the worker and preserves its evidence without redispatch.
 
 ## Delivery decomposition doctrine
 

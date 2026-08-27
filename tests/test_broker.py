@@ -42,6 +42,7 @@ class BrokerTests(unittest.TestCase):
         (root / "PID.md").write_text(f"# Test\n\nPROJECT_ROOT: `{root}`\n", encoding="utf-8")
         (root / "AXIOM.md").write_text("# Test\n", encoding="utf-8")
         (root / ".ack/state").mkdir(parents=True)
+        (root / ".ack/AXIOM-ACTIVE.md").write_text("AXIOM ACTIVE RULES\n", encoding="utf-8")
         (root / ".ack/state/project.yaml").write_text(yaml.safe_dump({"project_root": str(root)}), encoding="utf-8")
         subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
         return root
@@ -293,11 +294,12 @@ class BrokerTests(unittest.TestCase):
 
     def test_worker_run_executes_in_broker_and_acceptance_stays_separate(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        with patch("ack.broker.validate_project_root", return_value=root), patch("ack.broker._task_path", return_value=root / "task.yaml"), patch("ack.broker.load_config", return_value=Mock()), patch("ack.broker.Runner") as runner:
+        with patch("ack.broker.validate_project_root", return_value=root), patch("ack.broker._task_path", return_value=root / "task.yaml"), patch("ack.broker.load_config", return_value=Mock()), patch("ack.broker.refresh_for_control_action") as refresh, patch("ack.broker.Runner") as runner:
             runner.return_value.run.return_value = 0
             result = dispatch(root, "ack_worker_run", {"task": "task.yaml", "agent": "builder-one"})
         self.assertEqual(result, {"status": "PASS", "exit_code": 0})
         runner.return_value.run.assert_called_once()
+        refresh.assert_called_once_with(root, "ack_worker_run")
         self.assertFalse(any("accept" in tool["name"] for tool in TOOL_SCHEMAS))
 
         with patch("ack.broker.validate_project_root", return_value=root), patch("ack.broker._task_path", return_value=root / "task.yaml"), patch("ack.broker.integrate_worker_commit", return_value=("worker", "canonical")):

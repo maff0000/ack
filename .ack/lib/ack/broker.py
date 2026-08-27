@@ -10,6 +10,7 @@ import socket
 import socketserver
 import stat
 import subprocess
+import time
 from typing import Any
 
 import redis
@@ -64,6 +65,38 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 ]
 
 _SCHEMAS = {item["name"]: item["inputSchema"] for item in TOOL_SCHEMAS}
+
+ACTIVE_CARD_MAX_AGE_SECONDS = 15 * 60
+_active_card_refreshed_at: dict[Path, float] = {}
+
+
+def invalidate_active_card(root: Path) -> None:
+    """Invalidate process-local card freshness after session/recovery transitions."""
+    _active_card_refreshed_at.pop(root.resolve(), None)
+
+
+def refresh_active_card(root: Path, *, force: bool = False, now: float | None = None) -> bool:
+    """Read the tiny card when a session starts or its process-local copy is stale."""
+    canonical = root.resolve()
+    current = time.monotonic() if now is None else now
+    previous = _active_card_refreshed_at.get(canonical)
+    if not force and previous is not None and current - previous <= ACTIVE_CARD_MAX_AGE_SECONDS:
+        return False
+    card = canonical / ".ack/AXIOM-ACTIVE.md"
+    try:
+        text = card.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise AckError(f"active card unavailable: {card}") from exc
+    if not text.startswith("AXIOM ACTIVE RULES\n"):
+        raise AckError("active card has invalid header")
+    _active_card_refreshed_at[canonical] = current
+    return True
+
+
+def refresh_for_control_action(root: Path, operation: str, *, now: float | None = None) -> bool:
+    """Mechanically refresh before governed actions; ordinary calls refresh on age."""
+    always = {"ack_worker_run", "ack_worker_integrate", "ack_worker_accept", "ack_worker_reject", "ack_worker_terminate", "ack_worker_recover"}
+    return refresh_active_card(root, force=operation in always, now=now)
 
 
 def broker_socket_path(root: Path) -> Path:
@@ -122,6 +155,7 @@ def dispatch(root: Path, operation: str, raw_arguments: Any) -> dict[str, Any]:
     """Validate and execute one guarded operation inside the host broker."""
     root = validate_project_root(root)
     arguments = _validate_arguments(operation, raw_arguments)
+    refresh_for_control_action(root, operation)
     if operation == "ack_worker_validate":
         task = load_yaml(_task_path(root, arguments["task"]))
         validate_task(task, root_from_pid(root / "PID.md"))
@@ -269,6 +303,7 @@ class BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
 
     def __init__(self, root: Path, socket_path: Path, owner_nonce: str):
         self.project_root = validate_project_root(root)
+        invalidate_active_card(self.project_root)
         if not owner_nonce:
             raise AckError("ACK broker owner nonce is required")
         self.owner_nonce = owner_nonce

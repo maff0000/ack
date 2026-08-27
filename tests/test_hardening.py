@@ -31,6 +31,7 @@ def bubblewrap_usable() -> bool:
 def make_project(path: Path, pid_root: Path | None = None) -> Path:
     path.mkdir()
     (path / ".ack/state").mkdir(parents=True)
+    (path / ".ack/AXIOM-ACTIVE.md").write_text("AXIOM ACTIVE RULES\n")
     (path / "AXIOM.md").write_text("doctrine\n")
     (path / "PID.md").write_text(f"PROJECT_ROOT: `{pid_root or path}`\n")
     (path / ".ack/state/project.yaml").write_text(f"project: test\nproject_root: {path}\n")

@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 
 from .contracts import load_yaml, validate_result, validate_task
+from .dependencies import prepare_worker_environment
 from .errors import AckError
 from .paths import resolve_inside, root_from_pid
 
@@ -26,6 +27,7 @@ def allocate_worker_repo(task_path: str | Path) -> Path:
     marker = {"project_root": str(root), "task": task["id"], "base_commit": task["base_commit"], "branch": branch, "no_hardlinks": True}
     (target / ".git/ack-provenance.json").write_text(json.dumps(marker, sort_keys=True) + "\n", encoding="utf-8")
     verify_worker_repo(root, target, task)
+    prepare_worker_environment(root, task["id"])
     return target
 
 

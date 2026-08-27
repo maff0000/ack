@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import socket
@@ -22,6 +23,21 @@ from .paths import resolve_inside, root_from_pid
 from .pl import validate_project_root
 from .redact import redact
 from .runner import Runner
+
+
+ACK_FRAMEWORK_VERSION = "0.1.1"
+ACK_FRAMEWORK_COMMIT = "e9514a4"
+
+
+def framework_identity() -> dict[str, str]:
+    runner_path = Path(__file__).with_name("runner.py")
+    digest = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    return {
+        "version": ACK_FRAMEWORK_VERSION,
+        "commit": ACK_FRAMEWORK_COMMIT,
+        "runner_sha256": digest,
+        "bounded_stream_capture": "true" if "class _BoundedStreamCapture" in runner_path.read_text(encoding="utf-8") else "false",
+    }
 
 
 class BrokerUnavailable(AckError):
@@ -219,7 +235,7 @@ class _Handler(socketserver.StreamRequestHandler):
             if request["project_root"] != str(self.server.project_root):  # type: ignore[attr-defined]
                 raise AckError("broker request project root mismatch")
             if request["operation"] == "__broker_identity" and request["arguments"] == {}:
-                value = {"pid": os.getpid(), "nonce": self.server.owner_nonce}  # type: ignore[attr-defined]
+                value = {"pid": os.getpid(), "nonce": self.server.owner_nonce, "ack_framework": framework_identity()}  # type: ignore[attr-defined]
             else:
                 value = dispatch(self.server.project_root, request["operation"], request["arguments"])  # type: ignore[attr-defined]
             response = {"ok": True, "result": value}

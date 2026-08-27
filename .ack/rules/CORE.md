@@ -20,6 +20,7 @@
 18. Return concise structured results. Acceptance criteria are required actions and outcomes, not facts to repeat. Worker `completed` means the bounded task was actually executed, including required mutation and testing.
 19. Only Axiom may ACCEPT or REJECT project work; workers use only `completed`, `blocked`, or `failed`.
 20. If required work crosses `PROJECT_ROOT`, stop and report `blocked`.
+21. Use the ACK-prepared project dependency environment. Do not create virtual environments or install project dependencies inside a worker worktree.
 
 ## Delivery decomposition doctrine
 

@@ -6,6 +6,7 @@ import time
 import unittest
 import shutil
 import subprocess
+from unittest.mock import patch
 
 import yaml
 
@@ -16,6 +17,7 @@ sys.path.insert(0, str(ROOT / ".ack/lib"))
 from ack.contracts import planning_advisories, validate_result, validate_task
 from ack.config import load_config
 from ack.control import ControlPlane, STATUS_FIELDS
+from ack.dependencies import prepare_worker_environment, worker_environment_path
 from ack.errors import AckError
 from ack.git import allocate_worker_repo, integrate_worker_commit, verify_worker_repo
 from ack.paths import resolve_inside, root_from_pid, validate_root
@@ -68,6 +70,17 @@ class BoundaryTests(unittest.TestCase):
 
     def test_small_task_has_no_planning_advisory(self):
         self.assertEqual(planning_advisories(task(self.root)), [])
+
+    def test_project_dependencies_are_prepared_outside_worker_tree(self):
+        (self.root / "requirements.txt").write_text("Flask>=3\n", encoding="utf-8")
+        environment = worker_environment_path(self.root, "EB-TEST")
+        with patch("ack.dependencies.subprocess.run") as run:
+            returned = prepare_worker_environment(self.root, "EB-TEST")
+        self.assertEqual(returned, environment)
+        self.assertNotIn("EB-TEST", str(self.root / ".ack/worktrees"))
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].args[0][:3], [sys.executable, "-m", "venv"])
+        self.assertEqual(run.call_args_list[1].args[0][1:4], ["-m", "pip", "install"])
     def test_pid_root(self):
         (self.root/"PID.md").write_text(f"PROJECT_ROOT: `{self.root}`\n")
         self.assertEqual(root_from_pid(self.root/"PID.md"), self.root.resolve())

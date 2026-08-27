@@ -14,6 +14,7 @@ import yaml
 
 from .config import Config
 from .contracts import load_yaml, validate_result, validate_task
+from .dependencies import worker_environment_path
 from .control import ControlPlane
 from .errors import AckError
 from .git import verify_worker_repo
@@ -230,6 +231,7 @@ def build_worker_prompt(
         + result_template
         + f"\n\nYour result id must be {task['id']} and agent_instance must be {agent}. "
         + "Use `ack-agent progress <phase> <concise-action>` at meaningful milestones. "
+        + "Do not create virtual environments or install project dependencies inside the worker worktree; ACK prepares the declared project environment outside it. Report blocked if that environment is unavailable. "
         + "Return only the structured result; no Markdown fences or surrounding prose."
     )
 
@@ -484,6 +486,10 @@ class Runner:
                 disposable_home.mkdir(mode=0o700)
                 env.update(profile_env)
             env["PATH"] = f"{working_dir / '.ack/tools'}:{env.get('PATH','')}"
+            dependency_environment = worker_environment_path(root, task["id"])
+            if (dependency_environment / "bin/python").is_file():
+                env["VIRTUAL_ENV"] = str(dependency_environment)
+                env["PATH"] = f"{dependency_environment / 'bin'}:{env['PATH']}"
             record_git_boundary("before_worker")
             process = subprocess.Popen(command, cwd=working_dir, env=env, shell=False, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout_capture, stderr_capture, reader, error_reader = _drain_worker_streams(process)

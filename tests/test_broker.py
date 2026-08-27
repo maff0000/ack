@@ -28,6 +28,7 @@ from ack.broker import (
     broker_identity,
     bwrap_probe,
     dispatch,
+    framework_identity,
     serve_broker,
 )
 from ack.errors import AckError
@@ -66,6 +67,7 @@ class BrokerTests(unittest.TestCase):
                     identity = broker_identity(socket_path, root)
                     self.assertEqual(identity["nonce"], "first")
                     self.assertEqual(identity["pid"], os.getpid())
+                    self.assertEqual(identity["ack_framework"], framework_identity())
                 finally:
                     server.shutdown()
                     thread.join()

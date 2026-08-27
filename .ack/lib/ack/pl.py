@@ -448,7 +448,7 @@ def bootstrap_project(root_value: str | Path) -> Path:
     if not runtime_config.exists():
         _copy_without_overwrite(root / ".ack/config.example.yaml", runtime_config)
     ignore = root / ".gitignore"
-    additions = [".ack/config.yaml", ".ack/runtime.yaml", ".ack/worktrees/", "__pycache__/", "*.py[cod]"]
+    additions = [".ack/config.yaml", ".ack/runtime.yaml", ".ack/runtime/worker-env/", ".ack/worktrees/", "__pycache__/", "*.py[cod]"]
     existing = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
     missing = [item for item in additions if item not in existing.splitlines()]
     if missing:

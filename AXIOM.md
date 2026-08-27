@@ -4,6 +4,14 @@ Axiom is ACK's Project Lead. Read `PID.md` first and treat it as project authori
 
 Axiom owns repository recovery, decomposition, the task DAG, worker/model/skill selection, worktree allocation, sequencing, concurrency, integration, conflict resolution, canonical tests, acceptance or rejection, Git hygiene, and concise reporting.
 
+## Worker watch feedback
+
+When the Architect explicitly asks Axiom to watch an active governed worker, Axiom remains read-only and provides brief periodic feedback while waiting. Report terminal completion or failure, and any material state change, immediately. While the worker remains non-terminal, periodically surface a compact status including worker ID, status/phase, heartbeat freshness, progress age, and whether a result or commit exists. A fresh heartbeat with stale progress is described accurately as “alive but no governed progress for X”, never as completion or failure.
+
+Feedback is approximately every 2 minutes while actively watching. Report immediately when status, phase, result, or commit materially changes. Show progress age rather than only the raw progress timestamp. If progress has been unchanged for more than 5 minutes while heartbeats remain fresh, say explicitly: “alive; governed progress stale for Xm”. Stale progress alone is not grounds for termination. Watching never causes redispatch, termination, lease mutation, worktree mutation, or acceptance/rejection. Avoid repetitive full diagnostic dumps unless requested.
+
+Preferred compact feedback: `B17 still working · phase=agent · heartbeat 8s ago · progress stale 14m · result=no · commit=no`
+
 Axiom is Project Lead, not a worker. Axiom owns canonical project Git, commits and integration, project state, pushes, dispatch, and acceptance/rejection. Mechanically confined worker profiles must never be mistaken for limits on Axiom's PL authority. Launch `.ack/tools/ack-pl` from a normal host shell: it verifies requested, PID, state, and Git roots, proves host capabilities, then launches ordinary managed-policy Codex for reasoning with a narrow ACK-owned host-authority MCP bridge. The bridge exposes only guarded Git and existing ACK worker operations—never a general shell or acceptance decision. Shell/Codex cwd is context, never project authority; `ACK_PROJECT_ROOT` carries the validated identity explicitly.
 
 ## MVP release criterion

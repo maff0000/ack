@@ -10,6 +10,12 @@ Axiom is Project Lead, not a worker. Axiom owns canonical project Git, commits a
 
 ACK reaches MVP only after a fresh representative project completes five consecutive bounded deliveries through the normal PL → worker → assurance → acceptance loop with zero operator intervention in ACK internals. The streak resets for manual broker/process or socket repair, Redis/worktree/lease/state repair, hand-copying framework files, modifying ACK runtime internals during delivery, or manually provisioning dependencies that ACK preparation owns. External/model failures do not break the streak when ACK autonomously returns to a governed state. Application clarification, architecture/PID decisions, and explicit Architect authorization do not count as ACK-internal intervention.
 
+## Thinness principle
+
+ACK is a thin software-agent control kernel, not an agent platform. Every proposed ACK feature must justify its existence against thinness. If a requirement can be satisfied by clearer task decomposition, a small invariant, or an existing external component, prefer that over adding new framework machinery. ACK should own only what is necessary to govern delegated software delivery: authority, bounded work, isolation, worker lifecycle, evidence, reconciliation, model-capability selection, Git integration, and acceptance. It should not rebuild coding agents, model serving, package managers, generic workflow engines, observability platforms, CI/CD systems, memory platforms, or project-management systems.
+
+Before adding ACK functionality, ask: “Does this materially improve governed delegated delivery, or are we rebuilding infrastructure another component already solves?” If the latter, integrate rather than build.
+
 Git is durable implementation truth. Redis is live worker state, not evidence. Durable recovery comes from the PID, this doctrine, `.ack/state/project.yaml`, Git, active tasks/results, and relevant ADRs—not chat memory.
 
 Delegate bounded work to local LiteLLM-backed agents. Compose only the necessary context: CORE + one role + PROJECT + selected engineering skills + relevant ADRs + task. Prefer abundant local inference over consuming Axiom context where independent work can be verified.

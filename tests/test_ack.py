@@ -19,7 +19,7 @@ from ack.config import load_config
 from ack.control import ControlPlane, STATUS_FIELDS
 from ack.dependencies import prepare_worker_environment, worker_environment_path
 from ack.errors import AckError
-from ack.git import allocate_worker_repo, integrate_worker_commit, verify_worker_repo
+from ack.git import allocate_worker_repo, commit_project_paths, integrate_worker_commit, verify_worker_repo
 from ack.paths import resolve_inside, root_from_pid, validate_root
 from ack.skills import compose_skills
 from ack.time import utc_text, utc_now
@@ -81,6 +81,28 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(run.call_count, 2)
         self.assertEqual(run.call_args_list[0].args[0][:3], [sys.executable, "-m", "venv"])
         self.assertEqual(run.call_args_list[1].args[0][1:4], ["-m", "pip", "install"])
+
+    def test_governed_host_commit_selects_only_requested_paths(self):
+        root = Path(self.tmp.name) / "git-project"
+        root.mkdir()
+        (root / "PID.md").write_text(f"PROJECT_ROOT: `{root}`\n", encoding="utf-8")
+        (root / "AXIOM.md").write_text("before\n", encoding="utf-8")
+        (root / "unrelated.txt").write_text("before\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", "-b", "main", str(root)], check=True)
+        subprocess.run(["git", "-C", str(root), "add", "PID.md", "AXIOM.md", "unrelated.txt"], check=True)
+        subprocess.run(["git", "-C", str(root), "-c", "user.name=test", "-c", "user.email=test@local", "commit", "-m", "base"], check=True, capture_output=True)
+        expected = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], check=True, text=True, capture_output=True).stdout.strip()
+        (root / "AXIOM.md").write_text("after\n", encoding="utf-8")
+        (root / "unrelated.txt").write_text("still dirty\n", encoding="utf-8")
+
+        committed = commit_project_paths(root, ["AXIOM.md"], "governed doctrine change", expected)
+
+        self.assertNotEqual(committed, expected)
+        changed = subprocess.run(["git", "-C", str(root), "show", "--format=", "--name-only", committed], check=True, text=True, capture_output=True).stdout.splitlines()
+        self.assertEqual(changed, ["AXIOM.md"])
+        self.assertEqual((root / "unrelated.txt").read_text(encoding="utf-8"), "still dirty\n")
+        self.assertEqual(subprocess.run(["git", "-C", str(root), "status", "--porcelain"], check=True, text=True, capture_output=True).stdout.strip(), "M unrelated.txt")
+
     def test_pid_root(self):
         (self.root/"PID.md").write_text(f"PROJECT_ROOT: `{self.root}`\n")
         self.assertEqual(root_from_pid(self.root/"PID.md"), self.root.resolve())

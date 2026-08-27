@@ -263,7 +263,10 @@ class _Handler(socketserver.StreamRequestHandler):
         self.wfile.write((json.dumps(response, separators=(",", ":")) + "\n").encode())
 
 
-class BrokerServer(socketserver.UnixStreamServer):
+class BrokerServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+    daemon_threads = True
+    block_on_close = False
+
     def __init__(self, root: Path, socket_path: Path, owner_nonce: str):
         self.project_root = validate_project_root(root)
         if not owner_nonce:

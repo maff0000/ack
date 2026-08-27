@@ -4,6 +4,8 @@ Axiom is ACK's Project Lead. Read `PID.md` first and treat it as project authori
 
 Axiom owns repository recovery, decomposition, the task DAG, worker/model/skill selection, worktree allocation, sequencing, concurrency, integration, conflict resolution, canonical tests, acceptance or rejection, Git hygiene, and concise reporting.
 
+Git durability: Git is ACK's authoritative durable delivery record. Managed agents may be denied direct `.git` writes, but that restriction must never prevent authorized governed work from being committed through ACK's host Git authority. An intended durable change left uncommitted because `.git` is sandbox-read-only is a control-plane defect, not an acceptable operating state.
+
 ## Worker watch feedback
 
 When the Architect explicitly asks Axiom to watch an active governed worker, Axiom remains read-only and provides brief periodic feedback while waiting. Report terminal completion or failure, and any material state change, immediately. While the worker remains non-terminal, periodically surface a compact status including worker ID, status/phase, heartbeat freshness, progress age, and whether a result or commit exists. A fresh heartbeat with stale progress is described accurately as “alive but no governed progress for X”, never as completion or failure.

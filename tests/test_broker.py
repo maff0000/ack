@@ -173,6 +173,39 @@ class BrokerTests(unittest.TestCase):
             "ack_worker_reconcile", "ack_worker_integrate", "ack_git_commit", "ack_git_push",
         ])
 
+    def test_git_authority_is_available_while_another_request_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.project(directory)
+            socket_path = root / ".ack/runtime/broker.sock"
+            started = threading.Event()
+            release = threading.Event()
+
+            def slow_dispatch(*_: object, **__: object) -> dict[str, str]:
+                started.set()
+                release.wait(2)
+                return {"status": "PASS"}
+
+            with patch("ack.broker.dispatch", side_effect=slow_dispatch):
+                with BrokerServer(root, socket_path, "concurrent") as server:
+                    thread = threading.Thread(target=server.serve_forever, daemon=True)
+                    thread.start()
+                    request_result: list[object] = []
+                    request_thread = threading.Thread(
+                        target=lambda: request_result.append(
+                            broker_call(socket_path, root, "ack_git_commit", {"paths": ["AXIOM.md"], "message": "x", "expected_canonical_head": "head"}, timeout=3)
+                        ),
+                        daemon=True,
+                    )
+                    request_thread.start()
+                    self.assertTrue(started.wait(1))
+                    identity = broker_identity(socket_path, root, timeout=1)
+                    self.assertEqual(identity["nonce"], "concurrent")
+                    release.set()
+                    request_thread.join(2)
+                    self.assertEqual(request_result, [{"status": "PASS"}])
+                    server.shutdown()
+                    thread.join()
+
     def test_genuine_broker_unavailable_is_not_outcome_unknown(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

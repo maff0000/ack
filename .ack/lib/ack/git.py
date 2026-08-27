@@ -19,16 +19,36 @@ def allocate_worker_repo(task_path: str | Path) -> Path:
     allowed = resolve_inside(root, ".ack/worktrees")
     try: target.relative_to(allowed)
     except ValueError as exc: raise AckError("worker repository must be under .ack/worktrees") from exc
-    if target.exists(): raise AckError(f"worker repository already exists: {target}")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "clone", "--no-hardlinks", "--no-checkout", str(root), str(target)], check=True)
-    branch = f"ack/{task['id']}/worker"
-    subprocess.run(["git", "-C", str(target), "switch", "-c", branch, task["base_commit"]], check=True)
-    marker = {"project_root": str(root), "task": task["id"], "base_commit": task["base_commit"], "branch": branch, "no_hardlinks": True}
-    (target / ".git/ack-provenance.json").write_text(json.dumps(marker, sort_keys=True) + "\n", encoding="utf-8")
+    if target.exists():
+        _verify_reusable_worker(root, target, task)
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "clone", "--no-hardlinks", "--no-checkout", str(root), str(target)], check=True)
+        branch = f"ack/{task['id']}/worker"
+        subprocess.run(["git", "-C", str(target), "switch", "-c", branch, task["base_commit"]], check=True)
+        marker = {"project_root": str(root), "task": task["id"], "base_commit": task["base_commit"], "branch": branch, "no_hardlinks": True}
+        (target / ".git/ack-provenance.json").write_text(json.dumps(marker, sort_keys=True) + "\n", encoding="utf-8")
     verify_worker_repo(root, target, task)
     prepare_worker_environment(root, task["id"])
     return target
+
+
+def _verify_reusable_worker(root: Path, target: Path, task: dict) -> None:
+    if not target.is_dir() or not (target / ".git").is_dir():
+        raise AckError("existing worker path is not a governed Git repository")
+    verify_worker_repo(root, target, task)
+    head = subprocess.run(
+        ["git", "-C", str(target), "rev-parse", "HEAD"],
+        check=True, text=True, capture_output=True,
+    ).stdout.strip()
+    if head != task["base_commit"]:
+        raise AckError(f"existing worker repository HEAD does not match task base_commit: {head}")
+    status = subprocess.run(
+        ["git", "-C", str(target), "status", "--porcelain=v1", "--untracked-files=all"],
+        check=True, text=True, capture_output=True,
+    ).stdout
+    if status:
+        raise AckError("existing worker repository is dirty; resolve residue before reuse")
 
 
 def verify_worker_repo(root: Path, target: Path, task: dict) -> None:

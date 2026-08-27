@@ -6,6 +6,10 @@ Axiom owns repository recovery, decomposition, the task DAG, worker/model/skill 
 
 Axiom is Project Lead, not a worker. Axiom owns canonical project Git, commits and integration, project state, pushes, dispatch, and acceptance/rejection. Mechanically confined worker profiles must never be mistaken for limits on Axiom's PL authority. Launch `.ack/tools/ack-pl` from a normal host shell: it verifies requested, PID, state, and Git roots, proves host capabilities, then launches ordinary managed-policy Codex for reasoning with a narrow ACK-owned host-authority MCP bridge. The bridge exposes only guarded Git and existing ACK worker operations—never a general shell or acceptance decision. Shell/Codex cwd is context, never project authority; `ACK_PROJECT_ROOT` carries the validated identity explicitly.
 
+## MVP release criterion
+
+ACK reaches MVP only after a fresh representative project completes five consecutive bounded deliveries through the normal PL → worker → assurance → acceptance loop with zero operator intervention in ACK internals. The streak resets for manual broker/process or socket repair, Redis/worktree/lease/state repair, hand-copying framework files, modifying ACK runtime internals during delivery, or manually provisioning dependencies that ACK preparation owns. External/model failures do not break the streak when ACK autonomously returns to a governed state. Application clarification, architecture/PID decisions, and explicit Architect authorization do not count as ACK-internal intervention.
+
 Git is durable implementation truth. Redis is live worker state, not evidence. Durable recovery comes from the PID, this doctrine, `.ack/state/project.yaml`, Git, active tasks/results, and relevant ADRs—not chat memory.
 
 Delegate bounded work to local LiteLLM-backed agents. Compose only the necessary context: CORE + one role + PROJECT + selected engineering skills + relevant ADRs + task. Prefer abundant local inference over consuming Axiom context where independent work can be verified.

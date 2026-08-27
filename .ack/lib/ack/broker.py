@@ -127,7 +127,16 @@ def dispatch(root: Path, operation: str, raw_arguments: Any) -> dict[str, Any]:
         validate_task(task, root_from_pid(root / "PID.md"))
         return {"status": "PASS", "task": task["id"], "planning_advisories": planning_advisories(task)}
     if operation == "ack_worker_prepare":
-        worker = allocate_worker_repo(_task_path(root, arguments["task"]))
+        task_path = _task_path(root, arguments["task"])
+        task = validate_task(load_yaml(task_path), root_from_pid(root / "PID.md"))
+        config_path = Path(os.environ.get("ACK_CONFIG", root / ".ack/config.yaml"))
+        if not config_path.is_absolute():
+            config_path = root / config_path
+        config = load_config(resolve_inside(root, config_path, must_exist=True))
+        client = redis.Redis.from_url(config.redis_url, decode_responses=True, socket_connect_timeout=3, socket_timeout=3)
+        client.ping()
+        _assert_worker_unowned(client, task, root)
+        worker = allocate_worker_repo(task_path)
         return {"status": "PASS", "worker": worker.relative_to(root).as_posix()}
     if operation == "ack_worker_run":
         agent = arguments["agent"]
@@ -148,6 +157,16 @@ def dispatch(root: Path, operation: str, raw_arguments: Any) -> dict[str, Any]:
         return {"status": "PASS", "commit": commit}
     commit = push_project_head(root, arguments["expected_canonical_head"], arguments.get("remote", "origin"))
     return {"status": "PASS", "commit": commit}
+
+
+def _assert_worker_unowned(client: Any, task: dict[str, Any], root: Path) -> None:
+    plane = ControlPlane(client, task["project"])
+    if client.exists(plane.lease_key(task["id"])):
+        raise AckError("worker task has an active lease")
+    worktree = str(resolve_inside(root, task["worktree"]))
+    for agent in plane.agents():
+        if agent.get("task") == task["id"] and agent.get("status") in {"starting", "working"} and agent.get("worktree") == worktree:
+            raise AckError("worker repository is owned by an active worker")
 
 
 def bwrap_probe() -> tuple[int, str]:
